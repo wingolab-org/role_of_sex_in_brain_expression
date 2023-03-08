@@ -1,0 +1,1380 @@
+###############################
+#### Local Compute: MASHR  ####
+#### code in "~/local/"    ####
+###############################
+
+===== new sex-specific analysis: combined rosmap + banner =====
+
+1. combine new reQCed n393 rosmap+banner, not reg sex
+#in /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/RB
+#combine reg_AD but not_reg_sex
+Rscript local/combine_proteomics_union.R RB.path.reg_AD.not_reg_sex >RB.path.reg_AD.not_reg_sex.stdout &
+#replace with genoID
+Rscript local/replace_colnames_with_newID.R RB.path.reg_AD.not_reg_sex.comb.csv ../RBM_addBA6/RBM_addBA6_genoID_table.idmap >RB.path.reg_AD.not_reg_sex.comb.genoID.csv
+#check colnames, make sure no dup
+
+#sva, protect sex
+#in /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/RB/RB.path.reg_AD.not_reg_sex.comb.svaProtectmsex
+#sva covar
+ln -s ../RB.path.reg_AD.not_reg_sex.comb.csv
+Rscript local/sva_covar_from_expr.R RB.path.reg_AD.not_reg_sex.comb.csv combined_rosmap_banner.id_vs_msex.txt &
+#replace with genoid
+Rscript local/replace_first_column_with_idmap.R RB.path.reg_AD.not_reg_sex.comb.sav_covar.txt ../../RBM_addBA6/RBM_addBA6_genoID_table.idmap.nohead >RB.path.reg_AD.not_reg_sex.comb.sav_covar.genoid.txt
+
+2. combine n610(r1+r2) rosmap + banner, not reg sex
+#in /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B
+
+#combine reg_AD but not_reg_sex
+Rscript local/combine_proteomics_union.R Rn610_B.path.reg_AD_not_sex >Rn610_B.path.reg_AD_not_sex.stdout &
+#check colnames, make sure no dup
+#result: 8600 proteins in N793
+
+#combine Rn610 and banner pheno
+#in /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B/Rn610_pheno
+#cp Rn610 pheno
+cp /Users/yueliu/YueLiu_OneDrive/Projects/rosmap_round1andround2_2019db/proteomics_QC/combine_round1_round2/combine_r1andr2_pheno.* ./
+#combine Rn610 and Banner, idmap for 1) geno and 2) msex
+awk 'NR==1{print}NR>1{print $1".ROSMAPn610",$2}' combine_r1andr2_pheno.idmap_geno >combine_r1andr2_pheno.idmap_geno.add_suff
+awk 'NR==1{print}NR>1{print $1".ROSMAPn610",$2}' combine_r1andr2_pheno.idmap_msex >combine_r1andr2_pheno.idmap_msex.add_suff
+less ../../RBM_addBA6/RBM_addBA6_genoID_table.idmap |grep Banner >Banner_idmap_geno.add_suff
+less ../../RB/RB.path.reg_AD.not_reg_sex.comb.svaProtectmsex/combined_rosmap_banner.id_vs_msex.txt |grep Banner >Banner_idmap_msex.add_suff
+cat combine_r1andr2_pheno.idmap_msex.add_suff Banner_idmap_msex.add_suff >Rn610_B.comb.msex.idmap
+cat combine_r1andr2_pheno.idmap_geno.add_suff Banner_idmap_geno.add_suff >Rn610_B.comb.geno.idmap
+awk 'NR>1{print}' Rn610_B.comb.geno.idmap >Rn610_B.comb.geno.idmap.nohead
+awk 'NR>1{print}' Rn610_B.comb.msex.idmap >Rn610_B.comb.msex.idmap.nohead
+
+#replace combined protein data with genoID
+Rscript local/replace_colnames_with_newID.R Rn610_B.path.reg_AD_not_sex.comb.csv Rn610_pheno/Rn610_B.comb.geno.idmap.nohead >Rn610_B.path.reg_AD_not_sex.comb.geno.csv
+#check colnames, make sure no dup
+Rscript local/row_or_colnames_for_expr_csv.R Rn610_B.path.reg_AD_not_sex.comb.geno.csv 2 >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames
+Rscript local/row_or_colnames_for_expr_csv.R Rn610_B.path.reg_AD_not_sex.comb.geno.csv 1 >Rn610_B.path.reg_AD_not_sex.comb.geno.rownames
+#result: 8600 proteins in N772
+
+#sva, protect sex
+#in /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B/Rn610_B.path.reg_AD_not_sex.comb.svaProtectmsex
+#sva covar
+ln -s ../Rn610_B.path.reg_AD_not_sex.comb.csv
+ln -s ../Rn610_pheno/Rn610_B.comb.msex.idmap.nohead
+ln -s ../Rn610_pheno/Rn610_B.comb.geno.idmap.nohead
+Rscript local/sva_covar_from_expr.R Rn610_B.path.reg_AD_not_sex.comb.csv  Rn610_B.comb.msex.idmap.nohead &
+#replace with genoid
+Rscript local/replace_first_column_with_idmap.R Rn610_B.path.reg_AD_not_sex.comb.sva_covar.txt Rn610_B.comb.geno.idmap.nohead >Rn610_B.path.reg_AD_not_sex.comb.sva_covar.genoid.txt
+
+#in the future, regress out sva in protein and then run following assoc/pQTL, which will be much faster than using sva as covar
+
+===== new sex-specific analysis : protein ~ sex + SVAs in new combined rosmapn610 + banner, for mashr  =====
+
+#in /Users/yueliu/YueLiu_OneDrive/Projects/sex_specific_proteomics/QC_together.svaProtectSex/combined_rosmap_banner
+
+#link data from /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B/
+ln -s /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B/Rn610_B.path.reg_AD_not_sex.comb.csv
+ln -s /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B/Rn610_B.path.reg_AD_not_sex.comb.svaProtectmsex/Rn610_B.path.reg_AD_not_sex.comb.sva_covar.txt
+ln -s /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B/Rn610_pheno/Rn610_B.comb.msex.idmap.nohead
+
+#lm: protein ~ sex + SVAs
+Rscript cluster/lm_expr_csv_with_covar.R Rn610_B.path.reg_AD_not_sex.comb.csv Rn610_B.comb.msex.idmap.nohead 0 Rn610_B.path.reg_AD_not_sex.comb.sva_covar.txt 0 Rn610_B.path.reg_AD_not_sex.comb.lm_sex_with_sva &
+
+#add ensg annotation
+Rscript ..local/add_ensg_anno_based_rownames.R Rn610_B.path.reg_AD_not_sex.comb.lm_sex_with_sva.pval.csv
+
+#generate one with additional column of sample size N per gene
+Rscript local/lm_expr_csv_with_covar_addN.R Rn610_B.path.reg_AD_not_sex.comb.csv Rn610_B.comb.msex.idmap.nohead 0 Rn610_B.path.reg_AD_not_sex.comb.sva_covar.txt 0 Rn610_B.path.reg_AD_not_sex.comb.lm_sex_with_sva_addN &
+Rscript ..local/add_ensg_anno_based_rownames.R Rn610_B.path.reg_AD_not_sex.comb.lm_sex_with_sva_addN.pval.csv
+
+
+===== mashr on all tissues for new combined rosmapn610 +banner =====
+
+#rerun mashr on all tissues
+#in /Users/yueliu/YueLiu_OneDrive/Projects/sex_specific_proteomics/QC_together.svaProtectSex/mashr
+
+#cp individual tissue assoc results
+cp ../combined_rosmap_banner/Rn610_B.path.reg_AD_not_sex.comb.lm_sex_with_sva.pval.csv ./
+cp ../mashr.old/*.pval.csv ./
+
+#make mashr input
+#edit assoc_result_list_for_mashr
+Rscript make_BetaSE_matrix_for_mashr_input_from_assoc_results.R assoc_result_list_for_mashr assoc_result_list_for_mashr beta sd_beta
+
+#run mashr
+Rscript assoc_result_list_for_mashr.full_join.run_mashr.R >assoc_result_list_for_mashr.full_join.run_mashr.stdout &
+
+#there are two methods to account for measurement correlations, i.e. sample overlaps
+#test both method 2 (preferred method, as in Yuxin Zou’s thesis.); method 1 (as in Urbut et al.)
+#method 2 is recommended and used for following analysis
+#based on get_loglik, method 2 is larger
+method 2: -199474.7047
+method 1: -199575.1496
+#so indeed method 2 is better
+
+#from Analysis plan
+Questions:
+i) What genes have sex difference on brain protein expression in at least 1 brain region? 2 brain regions? 3 brain regions? 4 brain regions? 5 brain regions? 6 brain regions?
+ii) Which genes have evidence of heterogeneity of effect of sex (direction of effect)?
+#results:
+i) # col N_sig_no_na: Number of signficant tissues, excluding input NA tissues
+assoc_result_list_for_mashr.full_join.mashr.m.Vem.n_sig.csv
+ii) # pairswise, genes that are sig in both tissues; col pm_1_2.sign: pm.1*pm.2 sign
+assoc_result_list_for_mashr.full_join.mashr.m.Vem.pairwise_both_sig.csv
+iii) #stats and add ChrX info
+assoc_result_list_for_mashr.full_join.mashr.m.Vem.pairwise_both_sig.stats
+assoc_result_list_for_mashr.full_join.mashr.m.Vem.n_sig.freq.csv
+
+
+#NOTE:
+#mashr used lfsr instead of lfdr to calculate "significance" or error rate
+
+#about lfsr (local false sign rate)
+#same author from https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC5379932/
+#e.g:
+#prob0 =0.03; probneg = 0.95;  probpos=1-0.95-0.03=0.02
+#lfsr=min(0.03+0.95,0.03+0.02)=0.05, i.e. we guess sign is negative (probneg = 0.95)
+#but the guess has a 0.05 (prob0+probpos) chance to be wrong
+#lfdr=prob0=0.03
+#if need to extract these numbers from mash https://github.com/stephenslab/mashr/issues/64
+#need set mash(..., output_lfdr =TRUE), and from mash output m
+#prob0 <- m$result$lfdr
+#probneg <- m$result$NegativeProb
+#probpos <- 1 - prob0 - probneg
+
+
+#about lfdr (local FDR)
+#from github issues
+#mash(..., output_lfdr = FALSE)
+#output_lfdr: If output_lfdr = TRUE, output local false discovery rate estimates. The lfdr tends to be
+#sensitive to mis-estimated covariance matrices, and generally we do not recommend using them;
+#we recommend using the local false sign rate (lfsr) instead, which is always returned, even when
+#output_lfdr = TRUE.
+
+#################################################################################################
+#### Process on compute cluster: sb-pQTL, sb-eQTL, replication rate, fusion, causal gene smr ####
+#### code in "~/cluster/"                                                                    ####
+#################################################################################################
+
+===== new sex-specific analysis: interaction pQTL proteomics ~ snp*sex, in new combined rosmapn610 + banner =====
+
+#model: protein ~ snp +sex+ snp*sex +PCs +SVAs
+
+#GTX paper sex specific cis-eQTL
+https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC7737656/
+
+1). autosomes
+
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner
+
+#geno data
+/home/yliu/work_dir/ProteinPrediction/All_data_wgs_08142019/merge_uniq/all_chrs_snps_only.without_LDREF_subset/combined_with_Banner
+n2291.combine.banner_rosmap.wgs_chip.final.MAF005.*
+
+#proteomics
+scp from /Users/yueliu/YueLiu_OneDrive/Projects/combine_multi_proteomics_sets/Rn610_B
+
+#interaction plink
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner
+
+#plink and covar file
+cp -a ../combined_rosmap_banner.old/n2291.combine.banner_rosmap.wgs_chip.final.* ./
+
+#cisGene: distribute expr and geno data per gene
+qsub2 "Rscript cluster/distribute_expr_and_genetics_per_gene_forFusion.R --expr Rn610_B.path.reg_AD_not_sex.comb.geno.csv  --anno ~/work_dir/ProteinPrediction/Gene_annotation/ensembl/Homo_sapiens.GRCh37.87.chr.gff3.gene.autosome.for_fusion.txt --plink  n2291.combine.banner_rosmap.wgs_chip.final.MAF005 --outdir cisGene/genes-500k-window --window_size 500000"
+716 ENSG00000000419.keep.fam
+
+#dir and fam list
+ls cisGene/genes-500k-window/*/*.keep.fam >SampleID-map.fam.list
+perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.fam.list >SampleID-map.dir.list
+8170 SampleID-map.dir.list
+perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+
+#covar
+#sva covar
+awk 'NR>1{$1=$1" "$1;print $0}'  Rn610_B.path.reg_AD_not_sex.comb.sva_covar.genoid.txt >Rn610_B.path.reg_AD_not_sex.comb.sva_covar.genoid.covar
+#merge sex and pc and sva
+perl cluster/merge_covar_file_plink.pl combine.banner_rosmap.sex.covar n2291.combine.banner_rosmap.wgs_chip.final.top10_PC.covar >combine.banner_rosmap.sex.PC.covar
+perl cluster/merge_covar_file_plink.pl combine.banner_rosmap.sex.PC.covar Rn610_B.path.reg_AD_not_sex.comb.sva_covar.genoid.covar >combine.banner_rosmap.sex.PC.sva.covar
+716 combine.banner_rosmap.sex.PC.sva.covar
+#omit sex, only for test
+awk '{$3="";print}' combine.banner_rosmap.sex.PC.sva.covar >combine.banner_rosmap.PC.sva.covar
+
+#run plink interaction loop (add*cov1, i.e. snp*sex)
+#run in two batch
+perl cluster/split_a_list_into_batches_prefixvar.pl SampleID-map.dir.list 4600 SampleID-map.dir.list.batch
+#batch0
+cluster/split_and_run.sh SampleID-map.dir.list.batch0 cluster/qtl_interaction_cov1_loop_plink.sh 200 combine.banner_rosmap.sex.PC.sva.covar
+cluster/split_and_run.sh SampleID-map.dir.list.batch1 cluster/qtl_interaction_cov1_loop_plink.sh 200 combine.banner_rosmap.sex.PC.sva.covar
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+cluster/split_and_run.sh SampleID-map.suf.list  cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh 400 ' 1 assoc.linear.cov1xadd'
+
+#extract only cov1xadd and add gene
+ls cisGene/genes-500k-window/*/*.keep.assoc.linear.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list
+cluster/split_and_run.sh SampleID-map.cov1xadd.add_SE.list cluster/extract_only_cov1xadd_add_gene.sh
+
+2) chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/chrX
+
+#plink file
+cp -a ../../combined_rosmap_banner.old/chrX/chrX.combine_rosmap_banner.list.new.MAF005.* ./
+
+#cisGene: distribute expr and geno data per gene
+qsub2 "Rscript cluster/distribute_expr_and_genetics_per_gene_forFusion.R --expr ../Rn610_B.path.reg_AD_not_sex.comb.geno.csv --anno ~/work_dir/ProteinPrediction/Gene_annotation/ensembl/Homo_sapiens.GRCh37.87.chr.gff3.gene.chrX.for_fusion.txt --plink  chrX.combine_rosmap_banner.list.new.MAF005 --outdir cisGene/genes-500k-window --window_size 500000"
+
+#dir and fam list
+ls cisGene/genes-500k-window/*/*.keep.fam >SampleID-map.fam.list
+perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.fam.list >SampleID-map.dir.list
+302 SampleID-map.dir.list
+
+#run plink interaction loop (add*cov1, i.e. snp*sex)
+ln -s ../combine.banner_rosmap.sex.PC.sva.covar
+qsub2 "cluster/qtl_interaction_cov1_loop_plink.sh SampleID-map.dir.list combine.banner_rosmap.sex.PC.sva.covar"
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+qsub2 " cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh SampleID-map.suf.list 1 assoc.linear.cov1xadd"
+
+#extract only cov1xadd and add gene
+ls cisGene/genes-500k-window/*/*.keep.assoc.linear.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list
+qsub2 "cluster/extract_only_cov1xadd_add_gene.sh SampleID-map.cov1xadd.add_SE.list"
+
+3) cat all results (autosomes and chrX)
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/
+
+#cov1xadd results list; including chrX
+ls cisGene/genes-500k-window/*/*.xonly_addgene chrX/cisGene/genes-500k-window/*/*.xonly_addgene >SampleID-map.xonly_addgene.plus_chrX.list
+#cat all;
+qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.xonly_addgene.plus_chrX.list SampleID-map.xonly_addgene.plus_chrX.list.cat;
+17344462 SampleID-map.xonly_addgene.plus_chrX.list.cat
+#maybe too many pQTLs
+
+#only test: fdr ; run through using all pQTLs
+qsub2 "Rscript local/bonf_table.R SampleID-map.xonly_addgene.plus_chrX.list.cat P"
+
+#only test: prepare input for mashr: beta/se, and top_pQTL per gene
+qsub2 " Rscript local/from_pQTL_cat_for_mashr_input.R SampleID-map.xonly_addgene.plus_chrX.list.cat"
+
+===== new sex-specific analysis: interaction pQTL proteomics ~ snp*sex, in MSBB =====
+
+#model: protein ~ snp +sex+ snp*sex +PCs +SVAs
+#the model has been run; just parse and cat the results
+
+1) autosomes
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/msbb
+
+#suf list
+perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+cluster/split_and_run.sh SampleID-map.suf.list  cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh 400 ' 1 assoc.linear.cov1xadd'
+
+2) chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/msbb/chrX
+
+#suf list
+perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+qsub2 " cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh SampleID-map.suf.list 1 assoc.linear.cov1xadd"
+
+===== new sex-specific analysis: interaction pQTL proteomics ~ snp*sex, in rosmap BA6/BA37 =====
+
+#model: protein ~ snp +sex+ snp*sex +PCs +SVAs
+#the model has been run; just parse and cat the results
+
+1. rosmap BA6
+
+1) autosomes
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/rosmap.BA6
+
+#suf list
+perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+cluster/split_and_run.sh SampleID-map.suf.list  cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh 400 ' 1 assoc.linear.cov1xadd'
+
+2) chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/rosmap.BA6/chrX
+
+#suf list
+perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+qsub2 " cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh SampleID-map.suf.list 1 assoc.linear.cov1xadd"
+
+2. rosmap BA37
+
+1) autosomes
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/rosmap.BA37
+
+#suf list
+perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+cluster/split_and_run.sh SampleID-map.suf.list  cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh 400 ' 1 assoc.linear.cov1xadd'
+
+2) chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/rosmap.BA37/chrX
+
+#suf list
+perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+
+#add SE and frq; to .assoc.linear.cov1xadd file
+qsub2 " cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh SampleID-map.suf.list 1 assoc.linear.cov1xadd"
+
+===== new sex-specific analysis: interaction pQTL proteomics ~ snp*sex, cov1xadd cat all =====
+
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/
+
+#1) autosomes
+#extract only cov1xadd and add gene
+for f in $(less sets.list.no_rosban );do cd $f; ls cisGene/genes-500k-window/*/*.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list; cd ../; done
+for f in $(less sets.list.no_rosban );do cd $f; cluster/split_and_run.sh SampleID-map.cov1xadd.add_SE.list cluster/extract_only_cov1xadd_add_gene.sh ; cd ../; done
+
+#2) chrX
+#extract only cov1xadd and add gene
+for f in $(less sets.list.no_rosban );do cd $f/chrX/; ls cisGene/genes-500k-window/*/*.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list; cd ../../; done
+for f in $(less sets.list.no_rosban );do cd $f/chrX/; qsub2 "cluster/extract_only_cov1xadd_add_gene.sh SampleID-map.cov1xadd.add_SE.list"; cd ../../; done
+
+3)cat all results (autosomes and chrX)
+#cov1xadd results list; including chrX
+for f in $(less sets.list.no_rosban );do cd $f; (ls cisGene/genes-500k-window/*/*.xonly_addgene chrX/cisGene/genes-500k-window/*/*.xonly_addgene >SampleID-map.xonly_addgene.plus_chrX.list & ) ; cd ../; done
+#cat all;
+for f in $(less sets.list.no_rosban );do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.xonly_addgene.plus_chrX.list SampleID-map.xonly_addgene.plus_chrX.list.cat" ; cd ../; done
+
+===== new sex-specific analysis: simple pQTL proteomics ~ snp =====
+
+#model: protein ~ snp + sex +PCs +SVAs
+
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex
+
+#check covar
+for f in $(less sets.list);do ls $f/$f.sex.PC.sva.covar;done
+
+1) autosomes
+#run plink
+for f in $(less sets.list);do cd $f; split_and_run.sh SampleID-map.dir.list "cluster/qtl_assoc_with_covar.sh" 400 $f.sex.PC.sva.covar; cd ../;done
+
+#add SE and frq;
+for f in $(less sets.list);do cd $f; cluster/split_and_run.sh SampleID-map.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../;done
+
+#add gene name
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.add_SE.list & ) ; cd ../;done
+for f in $(less sets.list);do cd $f;  qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.add_SE.list" ; cd ../;done
+
+2) chrX
+#run plink
+for f in $(less sets.list);do cd $f/chrX;  qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.dir.list ../$f.sex.PC.sva.covar"; cd ../../;done
+
+#add SE and frq;
+for f in $(less sets.list);do cd $f/chrX;  qsub2 "cluster/add_SE_esd_from_suf_to_linear_loop.sh SampleID-map.suf.list"; cd ../../; done
+
+#add gene name
+for f in $(less sets.list);do cd $f/chrX; (ls cisGene/genes-500k-window/*/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.add_SE.list & ) ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX;  qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.add_SE.list" ; cd ../../;done
+
+3) cat all results (autosomes and chrX), calculate fdr
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.add_SE_A2_MAF.txt.addgene >SampleID-map.simple_linear.addgene.plus_chrX.list &) ; cd ../;done
+for f in $(less sets.list);do cd $f; wc -l SampleID-map.simple_linear.addgene.plus_chrX.list; cd ../;done
+8458 SampleID-map.simple_linear.addgene.plus_chrX.list
+8711 SampleID-map.simple_linear.addgene.plus_chrX.list
+7651 SampleID-map.simple_linear.addgene.plus_chrX.list
+7651 SampleID-map.simple_linear.addgene.plus_chrX.list
+#cat all results (autosomes and chrX), calculate fdr
+for f in $(less sets.list);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.simple_linear.addgene.plus_chrX.list SampleID-map.simple_linear.addgene.plus_chrX.list.cat; Rscript local/bonf_table.R SampleID-map.simple_linear.addgene.plus_chrX.list.cat P >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr"; cd ../;done
+
+#test qvalue for fdr
+for f in $(less sets.list);do cd $f; qsub2 "Rscript cluster/qvalue_table.R SampleID-map.simple_linear.addgene.plus_chrX.list.cat P >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.qvalue"; cd ../;done
+
+===== new sex-specific analysis: sex-stratified pQTL proteomics ~ snp in male and female, for rosmapn610 + banner  =====
+
+#model: protein ~ snp +PCs +SVAs
+#run in male and female
+
+#for rosmapn610 + banner, separate male and female
+
+1) autosomes
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner
+
+#separate male and female data in plink
+qsub2 "cluster/plink_extract_in_male_female.sh SampleID-map.dir.list combine.banner_rosmap.sex.covar.male combine.banner_rosmap.sex.covar.female"
+
+2) chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/chrX
+
+#separate male and female data in plink
+qsub2 "cluster/plink_extract_in_male_female.sh SampleID-map.dir.list combine.banner_rosmap.sex.covar.male combine.banner_rosmap.sex.covar.female"
+
+===== new sex-specific analysis: sex-stratified pQTL proteomics ~ snp in male and female =====
+
+#model: protein ~ snp +PCs +SVAs
+#run in male and female
+
+1. covar without sex
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/
+for f in $(less sets.list);do cd $f; awk '{$3="";print}' $f.sex.PC.sva.covar >$f.sex.PC.sva.covar.nosex; cd ../;done
+
+2. autosomes
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/
+
+#male and female dir/fam
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.male/*.fam >SampleID-map.male.fam.list &) ; cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.dir.list; cd ../;done
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.female/*.fam >SampleID-map.female.fam.list &) ; cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.dir.list; cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.suf.list;cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.suf.list;cd ../;done
+
+#male and female plink
+#male
+for f in $(less sets.list);do cd $f; split_and_run.sh SampleID-map.male.dir.list  "cluster/qtl_assoc_with_covar.sh" 400 "$f.sex.PC.sva.covar.nosex 1 keep.male" ; cd ../;done
+#female
+for f in $(less sets.list);do cd $f; split_and_run.sh SampleID-map.female.dir.list  "cluster/qtl_assoc_with_covar.sh" 400 "$f.sex.PC.sva.covar.nosex 1 keep.female" ; cd ../;done
+#for male in rosmap BA6/BA37, the plink linear didn't run since too few samples: "Warning: Skipping --linear since # variables >= # samples."
+
+#add SE and frq;
+#female
+for f in $(less sets.list);do cd $f; cluster/split_and_run.sh SampleID-map.female.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../;done
+#male
+for f in $(less sets.list.no_BA6-37);do cd $f; cluster/split_and_run.sh SampleID-map.male.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../;done
+
+#add gene name
+#female
+for f in $(less sets.list);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.female/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.female.add_SE.list' ; cd ../;done
+for f in $(less sets.list);do cd $f; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.female.add_SE.list" ; cd ../;done
+#male
+for f in $(less sets.list.no_BA6-37);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.male/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.male.add_SE.list ' ; cd ../;done
+for f in $(less sets.list.no_BA6-37);do cd $f; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.male.add_SE.list" ; cd ../;done
+
+3. chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/
+
+#male and female dir/fam
+for f in $(less sets.list);do cd $f/chrX; (ls cisGene/genes-500k-window/*/*.male/*.fam >SampleID-map.male.fam.list &) ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.dir.list; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; (ls cisGene/genes-500k-window/*/*.female/*.fam >SampleID-map.female.fam.list &) ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.dir.list; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.suf.list;cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.suf.list;cd ../../;done
+
+#male and female plink
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.male.dir.list ../$f.sex.PC.sva.covar.nosex 1 keep.male" ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.female.dir.list ../$f.sex.PC.sva.covar.nosex 1 keep.female" ; cd ../../;done
+#for male in rosmap BA6/BA37, the plink linear didn't run since too few samples: "Warning: Skipping --linear since # variables >= # samples."
+
+#add SE and frq;
+#female
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/add_SE_esd_from_suf_to_linear_loop.sh  SampleID-map.female.suf.list "; cd ../../;done
+#male
+for f in $(less sets.list.no_BA6-37);do cd $f/chrX; qsub2 "cluster/add_SE_esd_from_suf_to_linear_loop.sh  SampleID-map.male.suf.list " ; cd ../../;done
+
+#add gene name
+#female
+for f in $(less sets.list);do cd $f/chrX; ls cisGene/genes-500k-window/*/*.female/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.female.add_SE.list ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.female.add_SE.list" ; cd ../../;done
+#male
+for f in $(less sets.list.no_BA6-37);do cd $f/chrX; ls cisGene/genes-500k-window/*/*.male/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.male.add_SE.list ; cd ../../;done
+for f in $(less sets.list.no_BA6-37);do cd $f/chrX; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.male.add_SE.list" ; cd ../../;done
+
+4. cat all results (autosomes and chrX), calculate fdr
+
+#4.1) female
+for f in $(less sets.list);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.female/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.female/*.add_SE_A2_MAF.txt.addgene >SampleID-map.female_linear.addgene.plus_chrX.list' ; cd ../;done
+#cat all results (autosomes and chrX), calculate fdr and qvalue
+for f in $(less sets.list);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.female_linear.addgene.plus_chrX.list SampleID-map.female_linear.addgene.plus_chrX.list.cat; Rscript cluster/qvalue_table.R SampleID-map.female_linear.addgene.plus_chrX.list.cat P >SampleID-map.female_linear.addgene.plus_chrX.list.cat.qvalue"; cd ../;done
+
+#4.2) male
+for f in $(less sets.list.no_BA6-37);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.male/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.male/*.add_SE_A2_MAF.txt.addgene >SampleID-map.male_linear.addgene.plus_chrX.list' ; cd ../;done
+#cat all results (autosomes and chrX), calculate fdr and qvalue
+for f in $(less sets.list.no_BA6-37);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.male_linear.addgene.plus_chrX.list SampleID-map.male_linear.addgene.plus_chrX.list.cat; Rscript cluster/qvalue_table.R SampleID-map.male_linear.addgene.plus_chrX.list.cat P >SampleID-map.male_linear.addgene.plus_chrX.list.cat.qvalue"; cd ../;done
+
+===== new sex-specific analysis: discovery of significant interaction pQTLs =====
+
+#for significant interaction candidate: signficant  snp pQTLs (fdr<0.05 in 1) male+female pQTLs or 2) female pQTLs or 3) male pQTLs)
+#significant interaction pQTLs (interaction fdr<0.05 in significant candidate pQTLs)
+
+1. signficant snp pQTLs for significant interaction candidate
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/
+
+#fdr<0.05 in female+male
+for f in $(less sets.list);do cd $f; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.simple_linear.addgene.plus_chrX.list.cat.qvalue >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005"; cd ../;done
+
+#fdr<0.05 in female
+for f in $(less sets.list);do cd $f; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.female_linear.addgene.plus_chrX.list.cat.qvalue > SampleID-map.female_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005"; cd ../;done
+
+#fdr<0.05 in male
+for f in $(less sets.list.no_BA6-37);do cd $f; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.male_linear.addgene.plus_chrX.list.cat.qvalue > SampleID-map.male_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005"; cd ../;done
+
+#add set info ("both_sex","female_only","male_only")
+for f in $(less sets.list);do cd $f; awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"both_sex"}' SampleID-map.simple_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005 >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005.addset;cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"female_only"}' SampleID-map.female_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005 >SampleID-map.female_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005.addset; cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"male_only"}' SampleID-map.male_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005 >SampleID-map.male_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005.addset; cd ../;done
+#note that rosmap.BA6 and rosmap.BA37 didn't have male_only assoc results; too few samples.
+
+#cat all fdr pQTLs in 3 sets ("both_sex","female_only","male_only")
+for f in $(less sets.list);do cd $f; ls *.addset >SampleID-map.all_sets_linear.fdr_005.list; cd ../;done
+for f in $(less sets.list);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.all_sets_linear.fdr_005.list SampleID-map.all_sets_linear.fdr_005.list.cat" ; cd ../;done
+#snp_gene pair list; i.e interaction candidate list
+for f in $(less sets.list);do cd $f; awk '{print $2,$(NF-3),$NF}' SampleID-map.all_sets_linear.fdr_005.list.cat >SampleID-map.all_sets_linear.fdr_005.list.cat.snp_gene; cd ../;done
+
+2. significant interaction pQTLs in interaction candidates
+
+#extract interaction snp_gene in the candidate list
+for f in $(less sets.list);do cd $f; qsub2 "perl local/two_col_key_print_list.pl SampleID-map.all_sets_linear.fdr_005.list.cat.snp_gene SampleID-map.xonly_addgene.plus_chrX.list.cat 2 13 1 1 >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs";cd ../;done
+#qvalue and fdr
+for f in $(less sets.list);do cd $f; qsub2 "Rscript cluster/qvalue_table.R SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs P >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue"; cd ../;done
+#fdr < 0.05
+for f in $(less sets.list);do cd $f; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue  >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005";cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR>1{print $2}' SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005 |sort |uniq >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005.snps;cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR>1{print $13}' SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005 |sort |uniq >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005.genes;cd ../;done
+
+#add more info to the significant interaction pQTLs ( snp pQTL info in both_sex or female_only or male_only)
+#edit a path file of snp pQTL in each tissue: pQTL_info.path ; note rosmap_BA6,rosmap_BA37 didn't have male_only snp pQTL as too small sample size
+#add info; if not enough memory, print by list first using perl or using more mem "qsub1 -pe smp 2"
+for f in $(less sets.list);do cd $f; echo "Rscript ..cluster/add_pQTL_info_to_interaction_result.R SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005 pQTL_info.path >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005.addinfo" |qsub1; cd ../; done
+for f in $(less sets.list);do cd $f; ln -s SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005.addinfo snpXsex.fdr_005;cd ../;done
+
+#scp2 the interaction fdr<0.05 results to /Users/yueliu/YueLiu_OneDrive/Projects/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/
+
+3. clump the significant interaction results in each gene
+
+#split the results in each gene
+for f in $(less sets.list);do cd $f; mkdir snpXsex.fdr_005.split_clump;cd ../;done
+for f in $(less sets.list);do cd $f/snpXsex.fdr_005.split_clump; qsub2 "Rscript cluster/split_table_by_column_into_ind_files.R ../snpXsex.fdr_005 GENE"; cd ../../;done
+for f in $(less sets.list);do cd $f/snpXsex.fdr_005.split_clump; ls split.* >split_list; cd ../../;done
+
+#merge autosome and chrX plink file, i.e., to have all genome snps for clump ref
+#e.g: in combined_rosmap_banner/, qsub2 "plink --merge-list auto_and_chrX.plink.list --make-bed --out auto_and_chrX.plink"
+
+#clump by plink
+#r2 default 0.5; set clump p1 and p2 to 1, i.e keep all results
+for f in $(less sets.list); do cd $f/snpXsex.fdr_005.split_clump; for g in $(less split_list); do qsub2 "plink --bfile ../auto_and_chrX.plink --clump $g  --clump-snp-field SNP --clump-field P --clump-r2 0.5 --out $g.clump_r2_05 --clump-p1 1 --clump-p2 1 " ; done; cd ../../;done
+#check results number, should be same as the gene number
+for f in $(less sets.list); do cd $f/snpXsex.fdr_005.split_clump; ls *.clump_r2_05.clumped |wc -l ;cd ../../;done
+for f in $(less sets.list); do cd $f/; wc -l SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_005.genes;cd ../;done
+
+#extract only clumpped snp result
+#clump r2 0.5 result
+for f in $(less sets.list); do cd $f/snpXsex.fdr_005.split_clump; for g in $(less split_list); do perl local/print_based_on_key_list.pl $g.clump_r2_05.clumped $g 3 2 1 1 >$g.clumped_r2_05; done; cd ../../;done
+for f in $(less sets.list); do cd $f/snpXsex.fdr_005.split_clump; ls *.clumped_r2_05 >All_clumped_r2_05.list; cluster/multi_files_cat_with_same_header_by_list.sh All_clumped_r2_05.list All_clumped_r2_05.cat; cd ../../; done
+for f in $(less sets.list); do cd $f/; ln -s snpXsex.fdr_005.split_clump/All_clumped_r2_05.cat snpXsex.fdr_005.clumped_r2_05;cd ../;done
+#note rosmap_BA37 didn't have fdr<0.05 interaction result; thus no clump result either
+
+#scp2 the interaction fdr<0.05 results to /Users/yueliu/YueLiu_OneDrive/Projects/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/
+
+===== new sex-specific analysis: fusion wgt in male/female =====
+
+1. chrX snps in hapmap3
+#fusion LDREF didn't have chrX, so use hapmap3 CEU chrX snps as LDREF
+#download (CEU.hmap.link) to /home/yliu/work_dir/software_install/fusion_twas-master/LDREF/hapmap_phase_3/
+#cat chr23 and chr25(pseudo autosome) as chrX
+#result: CEU.hmap.chrX.snps
+
+#snp list of fusion LDREF + hapmap3 chrX
+#in /home/yliu/work_dir/software_install/fusion_twas-master/LDREF
+cat all_chrs.plink.bim.snplist hapmap_phase_3/CEU.hmap.chrX.snps >all_chrs.plink.bim.snplist.plus_hmap_chrX
+1234846 all_chrs.plink.bim.snplist.plus_hmap_chrX
+1190321 all_chrs.plink.bim.snplist
+
+2. fusion geno data: LDREF data set
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex
+#extract snps that are in LDREF+hapmap3_chrX
+for f in $(less sets.list); do cd $f; qsub2 " plink --bfile auto_and_chrX.plink --extract ../all_chrs.plink.bim.snplist.plus_hmap_chrX --make-bed --out auto_and_chrX.plink.LDREF ";cd ../;done
+
+#extract samples in the proteomics sample list
+for f in $(less sets.list); do cd $f; qsub2 "plink --bfile auto_and_chrX.plink.LDREF --keep SampleID-map.sample.list --make-bed --out auto_and_chrX.plink.LDREF.SampleID ";cd ../;done
+
+3.fusion proteomics data: regress out sva
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex
+#regress out sva covar
+for f in $(less sets.list);do cd $f; qsub2 "Rscript local/regress_covar_from_expr_csv_only.R $f.expr.csv $f.sva.covar.txt 0 $f.expr.svaAdj.csv"; cd ../;done
+
+4. fusion
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex
+
+#build dir forFusion/ in each tissue
+for f in $(less sets.list); do cd $f; mkdir forFusion; cd ../;done
+
+1) distribute_expr_and_genetics_per_gene_forFusion.R
+for f in $(less sets.list); do cd $f/forFusion; qsub2 "Rscript cluster/distribute_expr_and_genetics_per_gene_forFusion.R --expr ../$f.expr.svaAdj.csv --anno ~/work_dir/ProteinPrediction/Gene_annotation/ensembl/Homo_sapiens.GRCh37.87.chr.gff3.gene.autosome_and_chrX.for_fusion.txt --plink ../auto_and_chrX.plink.LDREF.SampleID  --outdir forFusion/genes-500k-window --window_size 500000"; cd ../../;done
+
+#dir and fam list
+#note the name: forFusion to discern
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'ls forFusion/genes-500k-window/*/*.keep.fam >SampleID-map.forFusion.fam.list'; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; wc -l SampleID-map.forFusion.fam.list; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.forFusion.fam.list >SampleID-map.forFusion.dir.list; cd ../../;done
+
+#filter out missing pheno and keep nonNAfam
+for f in $(less sets.list); do cd $f/forFusion; qsub2 "cluster/mkdir_and_keep_only_nonNA_fam_loop.sh SampleID-map.forFusion.dir.list nonNAfam";cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion;  qsub2 'ls forFusion/genes-500k-window/*/nonNAfam/*.keep.fam >SampleID-map.forFusion.nonNAfam.fam.list'; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion;  perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.forFusion.nonNAfam.fam.list >SampleID-map.forFusion.nonNAfam.dir.list; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.forFusion.nonNAfam.fam.list >SampleID-map.forFusion.nonNAfam.suf.list; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; wc -l SampleID-map.forFusion.nonNAfam.suf.list; cd ../../;done
+
+#sample N per gene
+for f in $(less sets.list); do cd $f/forFusion; qsub2 "cluster/fam_N_each_gene_loop.sh SampleID-map.forFusion.nonNAfam.dir.list >SampleID-map.forFusion.nonNAfam.fam.N.per_gene.txt"; cd ../../;done
+
+#separate male and female
+for f in $(less sets.list); do cd $f; ls $f.sex.covar.female;ls $f.sex.covar.male;cd ../;done
+#separate male and female, plink; first male, then female
+for f in $(less sets.list); do cd $f/forFusion; qsub2 "cluster/plink_extract_in_male_female_new.sh  SampleID-map.forFusion.nonNAfam.dir.list ../$f.sex.covar.male ../$f.sex.covar.female ";cd ../../;done
+
+#dir and fam list in male and female
+#male
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'ls forFusion/genes-500k-window/*/nonNAfam/*.male/*.fam > SampleID-map.forFusion.nonNAfam.male.fam.list '; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.forFusion.nonNAfam.male.fam.list >SampleID-map.forFusion.nonNAfam.male.dir.list; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl -ne '/(\S+)\.fam/;print $1,"\n";'  SampleID-map.forFusion.nonNAfam.male.fam.list >SampleID-map.forFusion.nonNAfam.male.suf.list; cd ../../;done
+#female
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'ls forFusion/genes-500k-window/*/nonNAfam/*.female/*.fam > SampleID-map.forFusion.nonNAfam.female.fam.list '; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.forFusion.nonNAfam.female.fam.list >SampleID-map.forFusion.nonNAfam.female.dir.list; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl -ne '/(\S+)\.fam/;print $1,"\n";'  SampleID-map.forFusion.nonNAfam.female.fam.list >SampleID-map.forFusion.nonNAfam.female.suf.list; cd ../../;done
+
+#sample N per gene in male and female
+#male
+for f in $(less sets.list); do cd $f/forFusion; qsub2 "cluster/count_and_fam_N_each_gene_loop.sh SampleID-map.forFusion.nonNAfam.male.dir.list >SampleID-map.forFusion.nonNAfam.male.fam.N.per_gene.txt" ; cd ../../;done
+#female
+for f in $(less sets.list); do cd $f/forFusion; qsub2 "cluster/count_and_fam_N_each_gene_loop.sh SampleID-map.forFusion.nonNAfam.female.dir.list >SampleID-map.forFusion.nonNAfam.female.fam.N.per_gene.txt" ; cd ../../;done
+
+2) fusion wgt on nonNAfam
+#in male, female and both_sex
+
+# fusion wgt in male
+for f in $(less sets.list); do cd $f/forFusion; split_and_run.sh SampleID-map.forFusion.nonNAfam.male.fam.list  "perl local/FUSION_train_loop_fam.pl" ; cd ../../;done
+
+#fusion wgt in female
+for f in $(less sets.list); do cd $f/forFusion; split_and_run.sh SampleID-map.forFusion.nonNAfam.female.fam.list  "perl local/FUSION_train_loop_fam.pl" ; cd ../../;done
+
+#fusion wgt in both male and female
+for f in $(less sets.list); do cd $f/forFusion; split_and_run.sh SampleID-map.forFusion.nonNAfam.fam.list  "perl local/FUSION_train_loop_fam.pl" ; cd ../../;done
+
+3) cp wgt and generate WEIGHTS/
+#in male, female and both_sex
+
+#male
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'ls forFusion/genes-500k-window/*/nonNAfam/*.male/*.RDat >SampleID-map.forFusion.nonNAfam.male.fusion.list' ; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'perl local/cp_fusion_Rdat_and_add_ENSG_mRNAensgName.pl SampleID-map.forFusion.nonNAfam.male.fusion.list SampleID-map.forFusion.nonNAfam.male.fusion.dir; cluster/fusion_make_WEIGHTS_dir.sh SampleID-map.forFusion.nonNAfam.male.fusion.dir SampleID-map.forFusion.nonNAfam.male.fusion.WEIGHTS' ; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl cluster/fusion_add_fam_N_to_WEIGHTS_pos.pl SampleID-map.forFusion.nonNAfam.male.fam.N.per_gene.txt SampleID-map.forFusion.nonNAfam.male.fusion.WEIGHTS/train_weights.pos >SampleID-map.forFusion.nonNAfam.male.fusion.WEIGHTS/train_weights.pos.addN; cd ../../;done
+
+#female
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'ls forFusion/genes-500k-window/*/nonNAfam/*.female/*.RDat >SampleID-map.forFusion.nonNAfam.female.fusion.list' ; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'perl local/cp_fusion_Rdat_and_add_ENSG_mRNAensgName.pl SampleID-map.forFusion.nonNAfam.female.fusion.list SampleID-map.forFusion.nonNAfam.female.fusion.dir; cluster/fusion_make_WEIGHTS_dir.sh SampleID-map.forFusion.nonNAfam.female.fusion.dir SampleID-map.forFusion.nonNAfam.female.fusion.WEIGHTS' ; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl cluster/fusion_add_fam_N_to_WEIGHTS_pos.pl SampleID-map.forFusion.nonNAfam.female.fam.N.per_gene.txt SampleID-map.forFusion.nonNAfam.female.fusion.WEIGHTS/train_weights.pos >SampleID-map.forFusion.nonNAfam.female.fusion.WEIGHTS/train_weights.pos.addN; cd ../../;done
+
+#both male and female
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'ls forFusion/genes-500k-window/*/nonNAfam/*.RDat >SampleID-map.forFusion.nonNAfam.fusion.list' ; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; qsub2 'perl local/cp_fusion_Rdat_and_add_ENSG_mRNAensgName.pl SampleID-map.forFusion.nonNAfam.fusion.list SampleID-map.forFusion.nonNAfam.fusion.dir; cluster/fusion_make_WEIGHTS_dir.sh SampleID-map.forFusion.nonNAfam.fusion.dir SampleID-map.forFusion.nonNAfam.fusion.WEIGHTS' ; cd ../../;done
+for f in $(less sets.list); do cd $f/forFusion; perl cluster/fusion_add_fam_N_to_WEIGHTS_pos.pl SampleID-map.forFusion.nonNAfam.fam.N.per_gene.txt SampleID-map.forFusion.nonNAfam.fusion.WEIGHTS/train_weights.pos >SampleID-map.forFusion.nonNAfam.fusion.WEIGHTS/train_weights.pos.addN; cd ../../;done
+
+1800 SampleID-map.forFusion.nonNAfam.male.fusion.WEIGHTS/train_weights.pos.addN
+2463 SampleID-map.forFusion.nonNAfam.female.fusion.WEIGHTS/train_weights.pos.addN
+3025 SampleID-map.forFusion.nonNAfam.fusion.WEIGHTS/train_weights.pos.addN
+
+#Note:
+didn't find any fusion weight on chrX
+test in gene ENSG00000000003 ENSG00000000003.TSPAN6	X	99883667	99894988	-	gene
+test: in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion/forFusion/genes-500k-window/ENSG00000000003/nonNAfam/test_fusion
+#in fusion, build grm,
+plink --allow-no-sex --bfile ENSG00000000003.keep --make-grm-bin --out ENSG00000000003.keep
+#this has the error:
+"Excluding 257 variants on non-autosomes from relationship matrix calc.
+Error: No variants remaining."
+#so grm only use autosome variants; without grm, gcta can't compute the heritability. Thus no chrX fusion wgt.
+
+===== new sex-specific analysis: fusion with new sex-stratified gwas =====
+
+#Note:
+didn't find any fusion weight on chrX
+test in gene ENSG00000000003 ENSG00000000003.TSPAN6	X	99883667	99894988	-	gene
+test: in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion/forFusion/genes-500k-window/ENSG00000000003/nonNAfam/test_fusion
+#in fusion, build grm,
+plink --allow-no-sex --bfile ENSG00000000003.keep --make-grm-bin --out ENSG00000000003.keep
+#this has the error:
+"Excluding 257 variants on non-autosomes from relationship matrix calc.
+Error: No variants remaining."
+#so plink grm only use autosome variants; without grm, gcta can't compute the heritability. Thus no chrX fusion wgt.
+#test gcta's own grm
+~/work_dir/software_install/fusion_twas-master/gcta_nr_robust  --make-grm-xchr --bfile ENSG00000000003.keep --update-sex combine.banner_rosmap.sex.covar.code_1_2 --out test_gcta_grm
+#test gcta heritability with the above grm
+awk '{print $1,$2,$6}' ENSG00000000003.keep.fam >ENSG00000000003.keep.pheno
+~/work_dir/software_install/fusion_twas-master/gcta_nr_robust --grm test_gcta_grm --pheno ENSG00000000003.keep.pheno --out  test_gcta_grm --reml --reml-no-constrain --reml-lrt 1
+
+#Z.summary link
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary
+ls /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/GIANT_bmi_whr/Pulit_2019/*.females*Z.summary /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/Neale_lab_UKBB/*/*female*Z.summary /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/Blokland_20201.SCZ-BIP-MDD/download_Blokland_dropbox/rename_link/meta*auto_F?*Z.summary >female_path.list
+ls /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/GIANT_bmi_whr/Pulit_2019/*.males*Z.summary /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/Neale_lab_UKBB/*/*male*Z.summary /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/Blokland_20201.SCZ-BIP-MDD/download_Blokland_dropbox/rename_link/meta*auto_M*Z.summary |grep -v female >male_path.list
+14 female_path.list
+14 male_path.list
+#make Z.summary link
+perl link_path.pl female_path.list female
+perl link_path.pl male_path.list male
+#calculate meanN
+for f in *.Z.summary;do qsub2 "Rscript local/meanN_from_fusionZsummary.R $f >$f.meanN";done
+
+#gwas Z.summary list and list with sample size
+ls *female*Z.summary >gwas_sex-specific_summary_list.07012022.female
+ls *male*Z.summary |grep -v female >gwas_sex-specific_summary_list.07012022.male
+perl gwas_with_sample_size.pl gwas_sex-specific_summary_list.07012022.female >gwas_sex-specific_summary_list.07012022.female.with_sample_size
+perl gwas_with_sample_size.pl gwas_sex-specific_summary_list.07012022.male >gwas_sex-specific_summary_list.07012022.male.with_sample_size
+
+#fusion in male and female
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion
+ln -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/gwas_sex-specific_summary_list.07012022.traits
+
+1. male fusion assoc
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion/SampleID-map.forFusion.nonNAfam.male.fusion.pwas_and_coloc/
+ln -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/gwas_sex-specific_summary_list.07012022.male
+ln -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/gwas_sex-specific_summary_list.07012022.male.with_sample_size
+for g in $(less gwas_sex-specific_summary_list.07012022.male); do ls /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/$g; done
+for g in $(less gwas_sex-specific_summary_list.07012022.male); do cp -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/$g ./; done
+
+#run fusion and coloc
+perl cluster/run_fusion_coloc_from_summary_sample_size_list_noPANEL.pl gwas_sex-specific_summary_list.07012022.male.with_sample_size ../SampleID-map.forFusion.nonNAfam.male.fusion.WEIGHTS/
+
+2. female fusion assoc
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion/SampleID-map.forFusion.nonNAfam.female.fusion.pwas_and_coloc
+ln -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/gwas_sex-specific_summary_list.07012022.female
+ln -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/gwas_sex-specific_summary_list.07012022.female.with_sample_size
+for g in $(less gwas_sex-specific_summary_list.07012022.female); do ls /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/$g; done
+for g in $(less gwas_sex-specific_summary_list.07012022.female); do cp -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_Z_summary/$g ./; done
+
+#run fusion and coloc
+perl cluster/run_fusion_coloc_from_summary_sample_size_list_noPANEL.pl gwas_sex-specific_summary_list.07012022.female.with_sample_size ../SampleID-map.forFusion.nonNAfam.female.fusion.WEIGHTS/
+
+3. compare male and female fusion for sex-specific results
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion/
+
+#male
+this_pwd=`pwd`; cd SampleID-map.forFusion.nonNAfam.male.fusion.pwas_and_coloc/; mkdir fusion_results.links; cd fusion_results.links; for g in $(less ../../gwas_sex-specific_summary_list.07012022.traits); do ln -s $this_pwd/SampleID-map.forFusion.nonNAfam.male.fusion.pwas_and_coloc/$g.male.Z.summary.fusion_with_coloc.dir/out/all_fusion.dat.merge.bonf-adj.csv $g.male.fusion_assoc.csv;done; cd ../../
+
+#female
+this_pwd=`pwd`; cd SampleID-map.forFusion.nonNAfam.female.fusion.pwas_and_coloc; mkdir fusion_results.links; cd fusion_results.links; for g in $(less ../../gwas_sex-specific_summary_list.07012022.traits); do ln -s $this_pwd/SampleID-map.forFusion.nonNAfam.female.fusion.pwas_and_coloc/$g.female.Z.summary.fusion_with_coloc.dir/out/all_fusion.dat.merge.bonf-adj.csv $g.female.fusion_assoc.csv;done; cd ../..
+
+#compare male and female results
+#cp links
+cd fusion_compare_malefemale_results/; cp -s ../*.pwas_and_coloc/fusion_results.links/* ./;cd ../
+#compare by cluster/fusion_result_diff_sex.R
+#maleYes_femaleNo: male (fdr<0.05) and female (p>0.05 or NA)
+#femaleYes_maleNo: female (fdr<0.05) and male (p>0.05 or NA)
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion/fusion_compare_malefemale_results
+for g in $(less ../gwas_sex-specific_summary_list.07012022.traits); do mkdir $g.fusion_compare_sex; cd $g.fusion_compare_sex;  qsub2 "Rscript cluster/fusion_result_diff_sex.R ../$g.male.fusion_assoc.csv ../$g.female.fusion_assoc.csv $g.fusion_compare_sex"; cd ../; done
+#check if any trait have diff_sex output
+ wc -l *.fusion_compare_sex/*.gene_EQTL
+
+#for a master sheet
+#add trait info
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/forFusion/fusion_compare_malefemale_results
+#add trait column
+for g in $(less ../gwas_sex-specific_summary_list.07012022.traits); do cd $g.fusion_compare_sex; awk -F, -v trait=$g '{OFS=","}NR==1{print $0,"trait"}NR>1{print $0,trait}' $g.fusion_compare_sex.maleYes_femaleNo.csv >$g.fusion_compare_sex.maleYes_femaleNo.add_trait.csv; awk -F, -v trait=$g '{OFS=","}NR==1{print $0,"trait"}NR>1{print $0,trait}' $g.fusion_compare_sex.femaleYes_maleNo.csv >$g.fusion_compare_sex.femaleYes_maleNo.add_trait.csv; cd ../;done
+#cat all femaleYes_maleNo and maleYes_femaleNo results
+ls */*.fusion_compare_sex.femaleYes_maleNo.add_trait.csv >All_fusion_compare_sex.femaleYes_maleNo.list
+ls */*.fusion_compare_sex.maleYes_femaleNo.add_trait.csv >All_fusion_compare_sex.maleYes_femaleNo.list
+cluster/multi_files_cat_with_same_header_by_list.sh All_fusion_compare_sex.femaleYes_maleNo.list All_fusion_compare_sex.femaleYes_maleNo.cat.csv
+cluster/multi_files_cat_with_same_header_by_list.sh All_fusion_compare_sex.maleYes_femaleNo.list All_fusion_compare_sex.maleYes_femaleNo.cat.csv
+#write freq file by R: as.data.frame(table(df$trait)),
+All_fusion_compare_sex.femaleYes_maleNo.cat.freq.txt
+All_fusion_compare_sex.maleYes_femaleNo.cat.freq.txt
+
+===== new sex-specific analysis: internal replication; interaction in rosmap and banner separately =====
+
+#Analysis Plan:	Pi-hat for sex-biased QTLs between parahippocampus and dPFC? More important for confidence. (Yue)
+
+1. split rosmap and banner
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication
+#extract rosmap and banner separately
+qsub2 "Rscript local/row_or_colnames_for_expr_csv.R Rn610_B.path.reg_AD_not_sex.comb.geno.csv 2 >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames"
+perl -ne 'if(/^(\d\d\-)/){print;}' Rn610_B.path.reg_AD_not_sex.comb.geno.colnames >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.banner
+perl -ne 'if(! /^(\d\d\-)/){print;}' Rn610_B.path.reg_AD_not_sex.comb.geno.colnames >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.rosmap
+qsub2 "Rscript local/extract_from_csv_by_row_or_col.R Rn610_B.path.reg_AD_not_sex.comb.geno.csv Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.banner 2 >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.banner.extract.csv"
+qsub2 "Rscript local/extract_from_csv_by_row_or_col.R Rn610_B.path.reg_AD_not_sex.comb.geno.csv Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.rosmap 2 >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.rosmap.extract.csv"
+#rm rows with all NAs
+qsub2 "Rscript local/rm_allNA_row_or_col_from_expr_csv.R Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.banner.extract.csv 1 >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.banner.extract.rmNA.csv"
+qsub2 "Rscript local/rm_allNA_row_or_col_from_expr_csv.R Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.rosmap.extract.csv 1 >Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.rosmap.extract.rmNA.csv"
+mkdir rosmap;mkdir rosmap/chrX;cd rosmap;ln -s ../Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.rosmap.extract.rmNA.csv proteomics.expr.geno.csv;cd ../
+mkdir banner;mkdir banner/chrX;cd banner;ln -s ../Rn610_B.path.reg_AD_not_sex.comb.geno.colnames.banner.extract.rmNA.csv proteomics.expr.geno.csv;cd ../
+
+
+2. autosomes
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication
+
+#cisGene: distribute expr and geno data per gene
+for f in $(less sets.list );do cd $f;qsub2 "Rscript cluster/distribute_expr_and_genetics_per_gene_forFusion.R --expr proteomics.expr.geno.csv --anno ~/work_dir/ProteinPrediction/Gene_annotation/ensembl/Homo_sapiens.GRCh37.87.chr.gff3.gene.autosome.for_fusion.txt --plink ../../n2291.combine.banner_rosmap.wgs_chip.final.MAF005 --outdir cisGene/genes-500k-window --window_size 500000";cd ../;done
+151 banner/cisGene/genes-500k-window/ENSG00000000419/ENSG00000000419.keep.fam
+565 rosmap/cisGene/genes-500k-window/ENSG00000000419/ENSG00000000419.keep.fam
+
+#dir and fam list
+for f in $(less sets.list );do cd $f/; ls cisGene/genes-500k-window/*/*.keep.fam >SampleID-map.fam.list; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.fam.list >SampleID-map.dir.list ; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list; wc -l SampleID-map.suf.list; cd ../;done
+7907 SampleID-map.suf.list
+7175 SampleID-map.suf.list
+
+#separate male and female plink
+for f in $(less sets.list );do cd $f/; qsub2 "cluster/plink_extract_in_male_female.sh SampleID-map.dir.list ../../combine.banner_rosmap.sex.covar.male ../../combine.banner_rosmap.sex.covar.female"; cd ../;done
+
+#run plink interaction first, and then run plink simple pQTL assoc; otherwise, results may get overwrited
+#run plink interaction loop (add*cov1, i.e. snp*sex)
+for f in $(less sets.list );do cd $f/; cluster/split_and_run.sh SampleID-map.dir.list " cluster/qtl_interaction_cov1_loop_plink.sh" 400 ../../combined_rosmap_banner.sex.PC.sva.covar; cd ../;done
+#add SE and frq; to .assoc.linear.cov1xadd file
+for f in $(less sets.list );do cd $f/; cluster/split_and_run.sh SampleID-map.suf.list  cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh 400 ' 1 assoc.linear.cov1xadd'; cd ../;done
+#extract only cov1xadd and add gene
+for f in $(less sets.list);do cd $f/; ls cisGene/genes-500k-window/*/*.keep.assoc.linear.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list; cluster/split_and_run.sh SampleID-map.cov1xadd.add_SE.list cluster/extract_only_cov1xadd_add_gene.sh ; cd ../;done
+
+#run plink simple pQTL assoc
+#1) both sex
+for f in $(less sets.list );do cd $f/; split_and_run.sh SampleID-map.dir.list "cluster/qtl_assoc_with_covar.sh" 400 ../../combined_rosmap_banner.sex.PC.sva.covar; cd ../;done
+#add SE and frq;
+for f in $(less sets.list);do cd $f; cluster/split_and_run.sh SampleID-map.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../;done
+#add gene name
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.add_SE.list ) ; cd ../;done
+for f in $(less sets.list);do cd $f;  qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.add_SE.list" ; cd ../;done
+#2) male and female
+#male and female dir/fam
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.male/*.fam >SampleID-map.male.fam.list ) ; cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.dir.list; cd ../;done
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.female/*.fam >SampleID-map.female.fam.list ) ; cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.dir.list; cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.suf.list;cd ../;done
+for f in $(less sets.list);do cd $f; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.suf.list;cd ../;done
+#male and female plink
+#male
+for f in $(less sets.list);do cd $f; split_and_run.sh SampleID-map.male.dir.list  "cluster/qtl_assoc_with_covar.sh" 400 "../../combined_rosmap_banner.sex.PC.sva.covar.nosex 1 keep.male" ; cd ../;done
+#female
+for f in $(less sets.list);do cd $f; split_and_run.sh SampleID-map.female.dir.list  "cluster/qtl_assoc_with_covar.sh" 400 "../../combined_rosmap_banner.sex.PC.sva.covar.nosex 1 keep.female" ; cd ../;done
+#for msbb female, the plink linear didn't run since too few samples: "Warning: Skipping --linear since # variables >= # samples."
+#add SE and frq;
+#female
+for f in $(less sets.list);do cd $f; cluster/split_and_run.sh SampleID-map.female.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../;done
+#male
+for f in $(less sets.list);do cd $f; cluster/split_and_run.sh SampleID-map.male.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../;done
+#add gene name
+#female
+for f in $(less sets.list);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.female/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.female.add_SE.list' ; cd ../;done
+for f in $(less sets.list);do cd $f; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.female.add_SE.list" ; cd ../;done
+#male
+for f in $(less sets.list);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.male/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.male.add_SE.list ' ; cd ../;done
+for f in $(less sets.list);do cd $f; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.male.add_SE.list" ; cd ../;done
+
+#Note: for msbb female, sample size is too small to run plink assoc with covar
+
+3. chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication
+
+#cisGene: distribute expr and geno data per gene
+for f in $(less sets.list );do cd $f/chrX; qsub2 "Rscript cluster/distribute_expr_and_genetics_per_gene_forFusion.R --expr ../proteomics.expr.geno.csv --anno ~/work_dir/ProteinPrediction/Gene_annotation/ensembl/Homo_sapiens.GRCh37.87.chr.gff3.gene.chrX.for_fusion.txt --plink ../../../chrX/chrX.combine_rosmap_banner.list.new.MAF005 --outdir cisGene/genes-500k-window --window_size 500000";cd ../../;done
+
+#dir and fam list
+for f in $(less sets.list );do cd $f/chrX; ls cisGene/genes-500k-window/*/*.keep.fam >SampleID-map.fam.list; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.fam.list >SampleID-map.dir.list ; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list; wc -l SampleID-map.suf.list; cd ../../;done
+289 SampleID-map.suf.list
+268 SampleID-map.suf.list
+
+#separate male and female plink
+for f in $(less sets.list );do cd $f/chrX; qsub2 "cluster/plink_extract_in_male_female.sh SampleID-map.dir.list ../../../combine.banner_rosmap.sex.covar.male ../../../combine.banner_rosmap.sex.covar.female"; cd ../../;done
+
+#run plink interaction first, and then run plink simple pQTL assoc; otherwise, results may get overwrited
+#run plink interaction loop (add*cov1, i.e. snp*sex)
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/qtl_interaction_cov1_loop_plink.sh SampleID-map.dir.list ../../../combined_rosmap_banner.sex.PC.sva.covar"; cd ../../;done
+#add SE and frq; to .assoc.linear.cov1xadd file
+for f in $(less sets.list);do cd $f/chrX; qsub2 " cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh SampleID-map.suf.list 1 assoc.linear.cov1xadd";  cd ../../;done
+#extract only cov1xadd and add gene
+for f in $(less sets.list);do cd $f/chrX; ls cisGene/genes-500k-window/*/*.keep.assoc.linear.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list; qsub2 "cluster/extract_only_cov1xadd_add_gene.sh SampleID-map.cov1xadd.add_SE.list"; cd ../../;done
+
+#plink simple pQTL assoc
+#1) both sex
+for f in $(less sets.list );do cd $f/chrX;  qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.dir.list  ../../../combined_rosmap_banner.sex.PC.sva.covar"; cd ../../;done
+#add SE and frq;
+for f in $(less sets.list);do cd $f/chrX;  qsub2 "cluster/add_SE_esd_from_suf_to_linear_loop.sh SampleID-map.suf.list"; cd ../../; done
+#add gene name
+for f in $(less sets.list);do cd $f/chrX; (ls cisGene/genes-500k-window/*/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.add_SE.list  ) ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX;  qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.add_SE.list" ; cd ../../;done
+#2) male and female
+#male and female dir/fam
+for f in $(less sets.list);do cd $f/chrX; (ls cisGene/genes-500k-window/*/*.male/*.fam >SampleID-map.male.fam.list ) ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.dir.list; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; (ls cisGene/genes-500k-window/*/*.female/*.fam >SampleID-map.female.fam.list ) ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.dir.list; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.suf.list;cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.suf.list;cd ../../;done
+#male and female plink
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.male.dir.list ../../../combined_rosmap_banner.sex.PC.sva.covar.nosex  1 keep.male" ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.female.dir.list ../../../combined_rosmap_banner.sex.PC.sva.covar.nosex  1 keep.female" ; cd ../../;done
+#for msbb female, the plink linear didn't run since too few samples: "Warning: Skipping --linear since # variables >= # samples."
+#add SE and frq;
+#female
+for f in $(less sets.list);do cd $f/chrX; cluster/split_and_run.sh SampleID-map.female.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../../;done
+#male
+for f in $(less sets.list);do cd $f/chrX; cluster/split_and_run.sh SampleID-map.male.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh ; cd ../../;done
+#add gene name
+#female
+for f in $(less sets.list);do cd $f/chrX; qsub2 'ls cisGene/genes-500k-window/*/*.female/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.female.add_SE.list' ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.female.add_SE.list" ; cd ../../;done
+#male
+for f in $(less sets.list);do cd $f/chrX; qsub2 'ls cisGene/genes-500k-window/*/*.male/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.male.add_SE.list ' ; cd ../../;done
+for f in $(less sets.list);do cd $f/chrX; qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.male.add_SE.list" ; cd ../../;done
+
+#Note: for msbb female, sample size is too small to run plink assoc with covar
+
+4. cat all results (autosomes and chrX), calculate fdr
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication
+
+#plink interaction
+#cov1xadd results list; including chrX
+for f in $(less sets.list);do cd $f; ls cisGene/genes-500k-window/*/*.xonly_addgene chrX/cisGene/genes-500k-window/*/*.xonly_addgene >SampleID-map.xonly_addgene.plus_chrX.list; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.xonly_addgene.plus_chrX.list SampleID-map.xonly_addgene.plus_chrX.list.cat"; cd ../;done
+#fdr of interaction (only for test; actually sb-pQTL need to be a sig pQTL first)
+for f in $(less sets.list);do cd $f; qsub2 "Rscript local/bonf_table.R SampleID-map.xonly_addgene.plus_chrX.list.cat P >SampleID-map.xonly_addgene.plus_chrX.list.cat.fdr"; cd ../;done
+
+#plink simple pQTL assoc
+#1) both sex
+for f in $(less sets.list);do cd $f; (ls cisGene/genes-500k-window/*/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.add_SE_A2_MAF.txt.addgene >SampleID-map.simple_linear.addgene.plus_chrX.list ) ; cd ../;done
+for f in $(less sets.list);do cd $f; wc -l SampleID-map.simple_linear.addgene.plus_chrX.list; cd ../;done
+8196 SampleID-map.simple_linear.addgene.plus_chrX.list
+7443 SampleID-map.simple_linear.addgene.plus_chrX.list
+#cat all results (autosomes and chrX), calculate fdr
+for f in $(less sets.list);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.simple_linear.addgene.plus_chrX.list SampleID-map.simple_linear.addgene.plus_chrX.list.cat; Rscript local/bonf_table.R SampleID-map.simple_linear.addgene.plus_chrX.list.cat P >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr"; cd ../;done
+#2) male and female
+#female
+for f in $(less sets.list);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.female/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.female/*.add_SE_A2_MAF.txt.addgene >SampleID-map.female_linear.addgene.plus_chrX.list' ; cd ../;done
+#cat all results (autosomes and chrX), calculate fdr
+for f in $(less sets.list);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.female_linear.addgene.plus_chrX.list SampleID-map.female_linear.addgene.plus_chrX.list.cat; Rscript local/bonf_table.R SampleID-map.female_linear.addgene.plus_chrX.list.cat P >SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr"; cd ../;done
+#male
+for f in $(less sets.list);do cd $f; qsub2 'ls cisGene/genes-500k-window/*/*.male/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.male/*.add_SE_A2_MAF.txt.addgene >SampleID-map.male_linear.addgene.plus_chrX.list' ; cd ../;done
+#cat all results (autosomes and chrX), calculate fdr
+for f in $(less sets.list);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.male_linear.addgene.plus_chrX.list SampleID-map.male_linear.addgene.plus_chrX.list.cat; Rscript local/bonf_table.R SampleID-map.male_linear.addgene.plus_chrX.list.cat P >SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr"; cd ../;done
+
+#Note: for msbb female, sample size is too small to run plink assoc with covar
+
+5. determine significant sb-pQTLs
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication
+
+#first, for significant interaction candidate: signficant  snp pQTLs (fdr<0.05 in 1) male+female pQTLs or 2) female pQTLs or 3) male pQTLs)
+#then, significant  sb-pQTLs (interaction fdr<0.05 in significant candidate pQTLs)
+
+#5.1)  signficant snp pQTLs for significant interaction candidate
+
+#fdr<0.05 in female+male
+for f in $(less sets.list);do cd $f; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr.fdr_005"; cd ../;done
+
+#fdr<0.05 in female (no banner results; too small sample size)
+cd rosmap; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr > SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr.fdr_005"; cd ../
+
+#fdr<0.05 in male
+for f in $(less sets.list);do cd $f; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr > SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr.fdr_005"; cd ../;done
+
+#add set info ("both_sex","female_only","male_only")
+for f in $(less sets.list);do cd $f; awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"both_sex"}' SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr.fdr_005 >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr.fdr_005.addset;cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"female_only"}' SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr.fdr_005 >SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr.fdr_005.addset; cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"male_only"}' SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr.fdr_005 >SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr.fdr_005.addset; cd ../;done
+
+#cat all fdr pQTLs in 3 sets ("both_sex","female_only","male_only")
+for f in $(less sets.list);do cd $f; ls *.addset >SampleID-map.all_sets_linear.fdr_005.list; cd ../;done
+for f in $(less sets.list);do cd $f; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.all_sets_linear.fdr_005.list SampleID-map.all_sets_linear.fdr_005.list.cat" ; cd ../;done
+#snp_gene pair list; i.e interaction candidate list
+for f in $(less sets.list);do cd $f; awk '{print $2,$(NF-3),$NF}' SampleID-map.all_sets_linear.fdr_005.list.cat >SampleID-map.all_sets_linear.fdr_005.list.cat.snp_gene; cd ../;done
+
+#5.2) significant interaction pQTLs in interaction candidates
+
+#extract interaction snp_gene in the candidate list
+for f in $(less sets.list);do cd $f; qsub2 "perl local/two_col_key_print_list.pl SampleID-map.all_sets_linear.fdr_005.list.cat.snp_gene SampleID-map.xonly_addgene.plus_chrX.list.cat 2 13 1 1 >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs";cd ../;done
+#fdr
+for f in $(less sets.list);do cd $f; qsub2 "Rscript local/bonf_table.R SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs P >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr"; cd ../;done
+#fdr < 0.05; only rosmap has fdr<0.05; banner didn't have any
+for f in $(less sets.list);do cd $f; qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr  >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005";cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR>1{print $2}' SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005 |sort |uniq >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005.snps;cd ../;done
+for f in $(less sets.list);do cd $f; awk 'NR>1{print $13}' SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005 |sort |uniq >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005.genes;cd ../;done
+
+#add more info to the significant interaction pQTLs ( snp pQTL info in both_sex or female_only or male_only)
+#edit a path file of snp pQTL in each tissue: pQTL_info.path ; note banner didn't have female_only snp pQTL as too small sample size
+#add info; if not enough memory, print by list first using perl or using more mem "qsub1 -pe smp 2"
+for f in $(less sets.list);do cd $f; echo "Rscript ..cluster/add_pQTL_info_to_interaction_result.R SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005 pQTL_info.path >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005.addinfo" |qsub1; cd ../; done
+for f in $(less sets.list);do cd $f; ln -s SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005.addinfo snpXsex.fdr_005;cd ../;done
+
+#5.3). clump the significant interaction results in each gene
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication/rosmap
+
+#split the results in each gene
+mkdir snpXsex.fdr_005.split_clump
+cd snpXsex.fdr_005.split_clump; qsub2 "Rscript cluster/split_table_by_column_into_ind_files.R ../snpXsex.fdr_005 GENE"; cd ../;
+cd snpXsex.fdr_005.split_clump; ls split.* >split_list; cd ../
+
+#clump by plink
+#r2 default 0.5; set clump p1 and p2 to 1, i.e keep all results
+cd snpXsex.fdr_005.split_clump; for g in $(less split_list); do qsub2 "plink --bfile ../auto_and_chrX.plink --clump $g  --clump-snp-field SNP --clump-field P --clump-r2 0.5 --out $g.clump_r2_05 --clump-p1 1 --clump-p2 1 " ; done; cd ../
+#check results number, should be same as the gene number
+cd snpXsex.fdr_005.split_clump; ls *.clump_r2_05.clumped |wc -l ;cd ../
+wc -l SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005.genes
+
+#extract only clumpped snp result
+#clump r2 0.5 result
+cd snpXsex.fdr_005.split_clump; for g in $(less split_list); do perl local/print_based_on_key_list.pl $g.clump_r2_05.clumped $g 3 2 1 1 >$g.clumped_r2_05; done; cd ../
+cd snpXsex.fdr_005.split_clump; ls *.clumped_r2_05 >All_clumped_r2_05.list; cluster/multi_files_cat_with_same_header_by_list.sh All_clumped_r2_05.list All_clumped_r2_05.cat; cd ../
+ln -s snpXsex.fdr_005.split_clump/All_clumped_r2_05.cat snpXsex.fdr_005.clumped_r2_05
+#note banner didn't have fdr<0.05 interaction result; thus no clump result either
+
+6. replication test
+#test replication for results with clumping
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication/rosmap/snpXsex.fdr_005.split_clump.in_banner_replication
+
+qsub2 "perl local/two_col_key_print_list.pl ../snpXsex.fdr_005.clumped_r2_05.snp_gene  ../../banner/SampleID-map.xonly_addgene.plus_chrX.list.cat 2 13 0 1 >snpXsex.fdr_005.split_clump.in_banner_results "
+qsub2 "Rscript local/merge_two_plink_assoc_and_test_replication.R  ../snpXsex.fdr_005.clumped_r2_05 snpXsex.fdr_005.split_clump.in_banner_results snpXsex.fdr_005.split_clump.in_banner_results.replication >snpXsex.fdr_005.split_clump.in_banner_results.replication.summary"
+
+#for 55 clumped snps: pi rate is  0.513
+#for 47 lead snps: pi rate is 0.5227
+
+7. additional replication test (fdr<0.10)
+#fdr<0.10
+qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr 0.10 >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_010"
+ln -s SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_010 snpXsex.fdr_010
+#clump
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication/rosmap/snpXsex.fdr_010.split_clump
+qsub2 "Rscript cluster/split_table_by_column_into_ind_files.R ../snpXsex.fdr_010 GENE"
+ls split.* >split_list;
+for g in $(less split_list); do qsub2 "plink --bfile ../auto_and_chrX.plink --clump $g  --clump-snp-field SNP --clump-field P --clump-r2 0.5 --out $g.clump_r2_05 --clump-p1 1 --clump-p2 1 " ; done
+for g in $(less split_list); do perl local/print_based_on_key_list.pl $g.clump_r2_05.clumped $g 3 2 1 1 >$g.clumped_r2_05; done;
+ls *.clumped_r2_05 >All_clumped_r2_05.list; cluster/multi_files_cat_with_same_header_by_list.sh All_clumped_r2_05.list All_clumped_r2_05.cat;
+#replication test
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/internal_replication/rosmap/snpXsex.fdr_010.clumped_r2_05.in_banner_replication
+qsub2 "perl local/two_col_key_print_list.pl ../snpXsex.fdr_010.clumped_r2_05.snp_gene  ../../banner/SampleID-map.xonly_addgene.plus_chrX.list.cat 2 13 0 1 >snpXsex.fdr_010.split_clump.in_banner_results "
+qsub2 "Rscript local/merge_two_plink_assoc_and_test_replication.R  ../snpXsex.fdr_010.clumped_r2_05 snpXsex.fdr_010.split_clump.in_banner_results snpXsex.fdr_010.split_clump.in_banner_results.replication >snpXsex.fdr_010.split_clump.in_banner_results.replication.summary"
+#for 258 clumped snps: pi rate is 0.179
+#for 208 lead snps: pi rate is 0.1622
+
+===== new sex-specific analysis: RNAseq sb-eQTL; RNAseq QC =====
+
+#RNAseq data from Selina, July 18 and July 22 email
+#pheno file: ROSMAP_RNASeq_batchRIN_ALLprojid.csv
+
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/RNAseq_QC
+#format the expr csv and extract only race1(White)
+RNAseq_counts_filtered_VSTnormalized.expr.race1.csv
+
+#1) regress out batch, RIN, PMI, age_at_death, cogdx
+qsub2 "Rscript local/regress_covar_from_expr_csv_only.R RNAseq_counts_filtered_VSTnormalized.expr.race1.csv ROSMAP_RNASeq_batchRIN_ALLprojid.add_forYue_long.select.covar.txt ROSMAP_RNASeq_batchRIN_ALLprojid.add_forYue_long.select.covar.factor"
+#82317494 has multiple batch info but only one expr info; drop this one sample from the study
+ln -s RNAseq_counts_filtered_VSTnormalized.expr.race1.csv.resid.rm_82317494.csv RNAseq.expr.race1.batchRINpmiAgeCogdx.csv
+#replace with genoid
+awk 'NR>1{print $2,$1}' merge.1.wgs_chip.LDREF.PASS.fam.allinfo.unique.IID_vs_projid >merge.1.wgs_chip.LDREF.PASS.fam.allinfo.unique.IID_vs_projid.idmap
+qsub2 "Rscript  local/replace_colnames_with_newID_uniq.R  RNAseq.expr.race1.batchRINpmiAgeCogdx.csv merge.1.wgs_chip.LDREF.PASS.fam.allinfo.unique.IID_vs_projid.idmap >RNAseq.expr.race1.batchRINpmiAgeCogdx.genoid.csv"
+qsub2 "Rscript local/row_or_colnames_for_expr_csv.R RNAseq.expr.race1.batchRINpmiAgeCogdx.genoid.csv 2 >RNAseq.expr.race1.batchRINpmiAgeCogdx.genoid.colnames"
+607 RNAseq.expr.race1.batchRINpmiAgeCogdx.genoid.colnames
+
+#sva protect sex
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/RNAseq_QC/svaProtectsex
+qsub2 "cluster/sva_adj.sh RNAseq.expr.race1.batchRINpmiAgeCogdx.csv ROSMAP_RNASeq_batchRIN_ALLprojid.add_forYue_long.select.msex.rm_82317494"
+#replace with genoid
+qsub2 "Rscript local/replace_first_column_with_idmap_uniq.R RNAseq.expr.race1.batchRINpmiAgeCogdx.sva_covar.txt ../merge.1.wgs_chip.LDREF.PASS.fam.allinfo.unique.IID_vs_projid.idmap >RNAseq.expr.race1.batchRINpmiAgeCogdx.sva_covar.genoid.txt"
+
+
+#2) regress out batch, RIN, PMI (i.e. keep all the biological factors for age,sex,AD related analysis)
+qsub2 "Rscript local/regress_covar_from_expr_csv_only.R RNAseq_counts_filtered_VSTnormalized.expr.race1.csv ROSMAP_RNASeq_batchRIN_ALLprojid.add_forYue_long.select.covar.txt.batchRINpmi ROSMAP_RNASeq_batchRIN_ALLprojid.add_forYue_long.select.covar.factor.batch RNAseq_counts_filtered_VSTnormalized.expr.race1.csv.batchRINpmi.csv"
+qsub2 "Rscript local/extract_from_csv_by_row_or_col.R RNAseq_counts_filtered_VSTnormalized.expr.race1.csv.batchRINpmi.csv ROSMAP_RNASeq_batchRIN_ALLprojid.add_forYue_long.select.msex.rm_82317494 2 >RNAseq_counts_filtered_VSTnormalized.expr.race1.csv.batchRINpmi.rm_82317494.csv"
+ln -s RNAseq_counts_filtered_VSTnormalized.expr.race1.csv.batchRINpmi.rm_82317494.csv RNAseq.expr.race1.batchRINpmi.csv
+#scp to /Users/yueliu/Emory University/WingoLab - Common - Dry Lab/Project_sb-expression_in_aging_and_dementia/RNAseq
+
+===== new sex-specific analysis: RNAseq sb-eQTL; repeat the process as sb-pQTL =====
+
+1. autosomes
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/sb_pQTLs
+
+#cisGene: distribute expr and geno data per gene
+qsub2 "Rscript cluster/distribute_expr_and_genetics_per_gene_forFusion.R --expr RNAseq.expr.race1.batchRINpmiAgeCogdx.genoid.csv  --anno ~/work_dir/ProteinPrediction/Gene_annotation/ensembl/Homo_sapiens.GRCh37.87.chr.gff3.gene.autosome.for_fusion.txt --plink auto_and_chrX.plink --outdir cisGene/genes-500k-window --window_size 500000"
+
+#dir and fam list
+qsub2 ' ls cisGene/genes-500k-window/*/*.keep.fam >SampleID-map.fam.list'
+perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.fam.list >SampleID-map.dir.list ; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+14628 SampleID-map.suf.list
+
+#separate male and female plink
+qsub2 "cluster/plink_extract_in_male_female.sh SampleID-map.dir.list combine.banner_rosmap.sex.covar.male combine.banner_rosmap.sex.covar.female"
+
+#covar
+awk 'NR>1{print $1,$0}' RNAseq.expr.race1.batchRINpmiAgeCogdx.sva_covar.genoid.txt >RNAseq.expr.race1.batchRINpmiAgeCogdx.sva_covar.genoid.covar
+perl cluster/merge_covar_file_plink.pl combine.banner_rosmap.sex.covar n2138.wgs_chip.final.10PC.covar >sex.PC.covar
+perl cluster/merge_covar_file_plink.pl sex.PC.covar RNAseq.expr.race1.batchRINpmiAgeCogdx.sva_covar.genoid.covar >sex.PC.sva.covar
+591 sex.PC.sva.covar
+
+#--) run plink interaction first, and then run plink simple pQTL assoc; otherwise, results may get overwrited
+#run plink interaction loop (add*cov1, i.e. snp*sex)
+#run in two batch
+perl cluster/split_a_list_into_batches_prefixvar.pl SampleID-map.dir.list 7400 SampleID-map.dir.list.batch
+#batch0
+cluster/split_and_run.sh SampleID-map.dir.list.batch0 cluster/qtl_interaction_cov1_loop_plink.sh 200 sex.PC.sva.covar
+#batch1
+cluster/split_and_run.sh SampleID-map.dir.list.batch1 cluster/qtl_interaction_cov1_loop_plink.sh 200 sex.PC.sva.covar
+#the job is quite fast; so it actually has no need to split into two batches
+#add SE and frq; to .assoc.linear.cov1xadd file
+cluster/split_and_run.sh SampleID-map.suf.list  cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh 400 ' 1 assoc.linear.cov1xadd'
+#extract only cov1xadd and add gene
+ ls cisGene/genes-500k-window/*/*.keep.assoc.linear.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list; cluster/split_and_run.sh SampleID-map.cov1xadd.add_SE.list cluster/extract_only_cov1xadd_add_gene.sh ;
+
+#--) run plink simple pQTL assoc
+#1) both sex
+ split_and_run.sh SampleID-map.dir.list "cluster/qtl_assoc_with_covar.sh" 400 sex.PC.sva.covar
+#add SE and frq;
+ cluster/split_and_run.sh SampleID-map.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh
+#add gene name
+ls cisGene/genes-500k-window/*/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.add_SE.list
+qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.add_SE.list"
+#2) male and female
+#male and female dir/fam
+ls cisGene/genes-500k-window/*/*.male/*.fam >SampleID-map.male.fam.list
+ perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.dir.list
+ls cisGene/genes-500k-window/*/*.female/*.fam >SampleID-map.female.fam.list
+ perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.dir.list
+ perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.suf.list
+ perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.suf.list
+#male and female plink
+#male
+ split_and_run.sh SampleID-map.male.dir.list  "cluster/qtl_assoc_with_covar.sh" 400 "sex.PC.sva.covar.nosex 1 keep.male"
+#female
+ split_and_run.sh SampleID-map.female.dir.list  "cluster/qtl_assoc_with_covar.sh" 400 "sex.PC.sva.covar.nosex 1 keep.female"
+#add SE and frq;
+#female
+ cluster/split_and_run.sh SampleID-map.female.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh
+#male
+ cluster/split_and_run.sh SampleID-map.male.suf.list cluster/add_SE_esd_from_suf_to_linear_loop.sh
+#add gene name
+#female
+ qsub2 'ls cisGene/genes-500k-window/*/*.female/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.female.add_SE.list'
+ qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.female.add_SE.list"
+#male
+qsub2 'ls cisGene/genes-500k-window/*/*.male/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.male.add_SE.list '
+qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.male.add_SE.list"
+
+2. chrX
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/sb_pQTLs/chrX
+
+#cisGene: distribute expr and geno data per gene
+qsub2 "Rscript cluster/distribute_expr_and_genetics_per_gene_forFusion.R --expr ../RNAseq.expr.race1.batchRINpmiAgeCogdx.genoid.csv --anno ~/work_dir/ProteinPrediction/Gene_annotation/ensembl/Homo_sapiens.GRCh37.87.chr.gff3.gene.chrX.for_fusion.txt --plink ../auto_and_chrX.plink --outdir cisGene/genes-500k-window --window_size 500000"
+
+#dir and fam list
+qsub2 ' ls cisGene/genes-500k-window/*/*.keep.fam >SampleID-map.fam.list'
+perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.fam.list >SampleID-map.dir.list ; perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.fam.list >SampleID-map.suf.list
+500 SampleID-map.suf.list
+
+#separate male and female plink
+qsub2 "cluster/plink_extract_in_male_female.sh SampleID-map.dir.list ../combine.banner_rosmap.sex.covar.male ../combine.banner_rosmap.sex.covar.female"
+
+
+#--) run plink interaction first, and then run plink simple pQTL assoc; otherwise, results may get overwrited
+#run plink interaction
+qsub2 "cluster/qtl_interaction_cov1_loop_plink.sh SampleID-map.dir.list ../sex.PC.sva.covar "
+#add SE and frq; to .assoc.linear.cov1xadd file
+qsub2 " cluster/add_SE_esd_from_suf_to_linear_loop_withsuf.sh SampleID-map.suf.list 1 assoc.linear.cov1xadd"
+#extract only cov1xadd and add gene
+ ls cisGene/genes-500k-window/*/*.keep.assoc.linear.cov1xadd.add_SE_A2_MAF.txt > SampleID-map.cov1xadd.add_SE.list; qsub2 "cluster/extract_only_cov1xadd_add_gene.sh SampleID-map.cov1xadd.add_SE.list";
+
+#--) plink simple pQTL assoc
+#1) both sex
+qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.dir.list  ../sex.PC.sva.covar"
+#add SE and frq;
+ qsub2 "cluster/add_SE_esd_from_suf_to_linear_loop.sh SampleID-map.suf.list"
+#add gene name
+ls cisGene/genes-500k-window/*/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.add_SE.list
+qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.add_SE.list"
+#2) male and female
+#male and female dir/fam
+ls cisGene/genes-500k-window/*/*.male/*.fam >SampleID-map.male.fam.list
+ perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.dir.list
+ls cisGene/genes-500k-window/*/*.female/*.fam >SampleID-map.female.fam.list
+ perl -ne '/(\S+)\//;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.dir.list
+ perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.female.fam.list >SampleID-map.female.suf.list
+ perl -ne '/(\S+)\.fam/;print $1,"\n";' SampleID-map.male.fam.list >SampleID-map.male.suf.list
+#male and female plink
+qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.male.dir.list ../sex.PC.sva.covar.nosex 1 keep.male"
+qsub2 "cluster/qtl_assoc_with_covar.sh SampleID-map.female.dir.list ../sex.PC.sva.covar.nosex  1 keep.female"
+#add SE and frq;
+qsub2 "cluster/add_SE_esd_from_suf_to_linear_loop.sh  SampleID-map.female.suf.list"
+qsub2 "cluster/add_SE_esd_from_suf_to_linear_loop.sh  SampleID-map.male.suf.list"
+#add gene name
+#female
+ qsub2 'ls cisGene/genes-500k-window/*/*.female/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.female.add_SE.list'
+ qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.female.add_SE.list"
+#male
+qsub2 'ls cisGene/genes-500k-window/*/*.male/*.linear.add_SE_A2_MAF.txt >SampleID-map.linear.male.add_SE.list '
+qsub2 "cluster/add_gene_to_pQTL_assoc.sh SampleID-map.linear.male.add_SE.list"
+
+3. cat all results (autosomes and chrX), calculate fdr
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/sb_pQTLs
+
+#plink interaction
+#cov1xadd results list; including chrX
+ls cisGene/genes-500k-window/*/*.xonly_addgene chrX/cisGene/genes-500k-window/*/*.xonly_addgene >SampleID-map.xonly_addgene.plus_chrX.list; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.xonly_addgene.plus_chrX.list SampleID-map.xonly_addgene.plus_chrX.list.cat"
+#fdr of interaction (only for test; actually sb-pQTL need to be a sig pQTL first)
+qsub2 "Rscript local/bonf_table.R SampleID-map.xonly_addgene.plus_chrX.list.cat P >SampleID-map.xonly_addgene.plus_chrX.list.cat.fdr"
+
+#plink simple pQTL assoc
+#1) both sex
+ls cisGene/genes-500k-window/*/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.add_SE_A2_MAF.txt.addgene >SampleID-map.simple_linear.addgene.plus_chrX.list; qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.simple_linear.addgene.plus_chrX.list SampleID-map.simple_linear.addgene.plus_chrX.list.cat; Rscript local/bonf_table.R SampleID-map.simple_linear.addgene.plus_chrX.list.cat P >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr"
+#2) male and female
+#female
+qsub2 'ls cisGene/genes-500k-window/*/*.female/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.female/*.add_SE_A2_MAF.txt.addgene >SampleID-map.female_linear.addgene.plus_chrX.list'
+ qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.female_linear.addgene.plus_chrX.list SampleID-map.female_linear.addgene.plus_chrX.list.cat; Rscript local/bonf_table.R SampleID-map.female_linear.addgene.plus_chrX.list.cat P >SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr"
+#male
+qsub2 'ls cisGene/genes-500k-window/*/*.male/*.add_SE_A2_MAF.txt.addgene chrX/cisGene/genes-500k-window/*/*.male/*.add_SE_A2_MAF.txt.addgene >SampleID-map.male_linear.addgene.plus_chrX.list'
+qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.male_linear.addgene.plus_chrX.list SampleID-map.male_linear.addgene.plus_chrX.list.cat; Rscript local/bonf_table.R SampleID-map.male_linear.addgene.plus_chrX.list.cat P >SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr"
+
+4. determine significant sb-pQTLs
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/sb_pQTLs
+
+#first, for significant interaction candidate: signficant  snp pQTLs (fdr<0.05 in 1) male+female pQTLs or 2) female pQTLs or 3) male pQTLs)
+#then, significant  sb-pQTLs (interaction fdr<0.05 in significant candidate pQTLs)
+
+#4.1)  signficant snp pQTLs for significant interaction candidate
+#fdr<0.05 in female+male
+qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr.fdr_005"
+#fdr<0.05 in female
+qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr > SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr.fdr_005"
+#fdr<0.05 in male
+qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr > SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr.fdr_005"
+#add set info ("both_sex","female_only","male_only")
+awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"both_sex"}' SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr.fdr_005 >SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr.fdr_005.addset
+awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"female_only"}' SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr.fdr_005 >SampleID-map.female_linear.addgene.plus_chrX.list.cat.fdr.fdr_005.addset
+awk 'NR==1{print $0,"sample_set"}NR>1{print $0,"male_only"}' SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr.fdr_005 >SampleID-map.male_linear.addgene.plus_chrX.list.cat.fdr.fdr_005.addset
+#cat all fdr pQTLs in 3 sets ("both_sex","female_only","male_only")
+ls *.addset >SampleID-map.all_sets_linear.fdr_005.list
+qsub2 "cluster/multi_files_cat_with_same_header_by_list.sh SampleID-map.all_sets_linear.fdr_005.list SampleID-map.all_sets_linear.fdr_005.list.cat"
+awk '{print $2,$(NF-3),$NF}' SampleID-map.all_sets_linear.fdr_005.list.cat >SampleID-map.all_sets_linear.fdr_005.list.cat.snp_gene
+
+#4.2) significant interaction pQTLs in interaction candidates
+
+#extract interaction snp_gene in the candidate list
+qsub2 "perl local/two_col_key_print_list.pl SampleID-map.all_sets_linear.fdr_005.list.cat.snp_gene SampleID-map.xonly_addgene.plus_chrX.list.cat 2 13 1 1 >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs"
+#a lot more candidate eQTLs (3.3 million); for combined rosmap+banner pQTLs, the candidates number is 1036026
+3279261 SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs
+#fdr
+qsub2 "Rscript local/bonf_table.R SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs P >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr"
+#fdr<0.05
+ qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr  >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_005"
+#no fdr<0.05, the top one fdr is 0.10;
+#compare with rosmap+banner pQTLs: a) sample size: pQTL 716 and eQTL 589; b) candidate number: pQTL is 1036026 and eQTL is 3279261; c) top interaction pval: pQTL is 1.568e-09 and eQTL is 8.949e-08.
+
+#fdr<0.20
+qsub2 "cluster/last_column_fdr_cutoff.sh SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr 0.20 >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_020"
+#add info; if not enough memory, print by list first using perl or using more mem "qsub1 -pe smp 2"
+echo "Rscript ~/bincluster/add_pQTL_info_to_interaction_result.R SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_020 pQTL_info.path >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_020.addinfo" |qsub1 -pe smp 2
+ln -s SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.fdr.fdr_020.addinfo snpXsex.fdr_020
+#clump of fdr<0.20 results
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/sb_pQTLs/snpXsex.fdr_020.split_clump
+qsub2 "Rscript cluster/split_table_by_column_into_ind_files.R ../snpXsex.fdr_020 GENE"
+ls split.* >split_list;
+for g in $(less split_list); do qsub2 "plink --bfile ../auto_and_chrX.plink --clump $g  --clump-snp-field SNP --clump-field P --clump-r2 0.5 --out $g.clump_r2_05 --clump-p1 1 --clump-p2 1 " ; done
+for g in $(less split_list); do perl local/print_based_on_key_list.pl $g.clump_r2_05.clumped $g 3 2 1 1 >$g.clumped_r2_05; done
+ls *.clumped_r2_05 >All_clumped_r2_05.list; cluster/multi_files_cat_with_same_header_by_list.sh All_clumped_r2_05.list All_clumped_r2_05.cat;
+ln -s snpXsex.fdr_020.split_clump/All_clumped_r2_05.cat snpXsex.fdr_020.clumped_r2_05
+
+#scp to /Users/yueliu/Emory University/WingoLab - Common - Dry Lab/Project_Sex_Effect_on_Brain_Expression/Results/RNAseq_GenoxSex/snpXsex.fdr_020
+
+#calculate summary stats of fdr<0.20 sb-eQTLs and sb-pQTLs
+#1) sb-eQTLs
+#in /Users/yueliu/Emory University/WingoLab - Common - Dry Lab/Project_Sex_Effect_on_Brain_Expression/Results/RNAseq_GenoxSex/snpXsex.fdr_020
+Rscript ~/bin/snpXsex.fdr.summary_stats.R snpXsex.fdr_020.clumped_r2_05.csv 0.20
+#2) sb-pQTLs
+#in /Users/yueliu/Emory University/WingoLab - Common - Dry Lab/Project_Sex_Effect_on_Brain_Expression/Results/protein_GenoxSex/combined_rosmap_banner/snpXsex.fdr_020
+Rscript ~/bin/snpXsex.fdr.summary_stats.R snpXsex.fdr_020.clumped_r2_05.csv 0.20
+
+The --clump-r2 and --clump-kb are default values; the p1 and p2 are not default so that all snps were kept regardless of pval.
+
+5. pi rate for replication of pQTL in eQTL.
+#we can still run pi rate for replication of pQTL in eQTL.
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/snpXsex.fdr_005.clumped_r2_05.in_eQTL_replication
+qsub2 "perl local/two_col_key_print_list.pl ../snpXsex.fdr_005.clumped_r2_05.snp_gene SampleID-map.xonly_addgene.plus_chrX.list.cat 2 13 0 1 >snpXsex.fdr_005.split_clump.in_eQTL_results "
+qsub2 "Rscript local/merge_two_plink_assoc_and_test_replication.R ../snpXsex.fdr_005.clumped_r2_05 snpXsex.fdr_005.split_clump.in_eQTL_results snpXsex.fdr_005.split_clump.in_eQTL_results.replication >snpXsex.fdr_005.split_clump.in_eQTL_results.replication.summary"
+#pi rate 0
+
+#scp to /Users/yueliu/Emory University/WingoLab - Common - Dry Lab/Project_Sex_Effect_on_Brain_Expression/Results/protein_GenoxSex/replication_test/combined_rosmap_banner/snpXsex.fdr_005.clumped_r2_05.in_eQTL_replication
+
+===== new sex-specific analysis: RNAseq differential expression in sex =====
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/RNAseq_QC/sex_diff_lm
+#lm: mRNA ~ sex + SVAs
+qsub2 "Rscript cluster/lm_expr_csv_with_covar.R ../RNAseq.expr.race1.batchRINpmiAgeCogdx.csv ../svaProtectsex/ROSMAP_RNASeq_batchRIN_ALLprojid.add_forYue_long.select.msex.rm_82317494 0 ../svaProtectsex/RNAseq.expr.race1.batchRINpmiAgeCogdx.sva_covar.txt 0 RNAseq.expr.race1.batchRINpmiAgeCogdx.lm_sex_with_sva "
+
+scp to /Users/yueliu/Emory University/WingoLab - Common - Dry Lab/Project_Sex_Effect_on_Brain_Expression/Results/RNAseq_sex_diff_lm
+
+#in /Users/yueliu/Emory University/WingoLab - Common - Dry Lab/Project_Sex_Effect_on_Brain_Expression/Results/RNAseq_sex_diff_lm
+
+#add ensg annotation
+Rscript ~/binlocal/add_ensg_anno_based_rownames.R RNAseq.expr.race1.batchRINpmiAgeCogdx.lm_sex_with_sva.pval.csv
+
+===== new sex-specific analysis: Analysis Plan questions, causal proteins in sb-pQTLs, run smr =====
+
+2. 12 causal proteins in sb-pQTLs, run smr
+
+# smr in men and women separately
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/Causal_proteins_from_shared_mechansim/sb_smr
+
+#build trait dir and target snps for each trait
+ln -s ../Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp
+awk '{print $NF,$3}' Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp >Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.snp_trait
+perl cluster/build_trait_dir_target_snps_for_smr.pl Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.snp_trait
+ls -d */|sed 's/\///' >trait.list
+#cp .ma for each trait
+ for f in $(less trait.list );do cp -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_GCTA_ma/$f.female.ma $f/;done
+for f in $(less trait.list );do cp -s /home/yliu/work_dir/ProteinPrediction/sex_specific_gwas/links.gwas_sex_specific_GCTA_ma/$f.male.ma $f/;done
+
+#subset data for speed
+awk '{print $1}' Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp |sort|uniq >Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.gene
+ln -s Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.gene targe_gene.list
+awk '{print $NF,$1}' Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp  >Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.snp_gene
+ln -s Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.snp_gene targe_gene.snp_gene
+qsub2 "perl cluster/extract_snps_from_pQTLs_gene_list.pl ../../SampleID-map.xonly_addgene.plus_chrX.list.cat targe_gene.list >targe_gene.all_snps"
+#all cis snps of each target gene
+sort targe_gene.all_snps |uniq >targe_gene.all_snps.uniq
+#plink geno file of all cis snps
+qsub2 "plink --bfile ../../auto_and_chrX.plink --extract targe_gene.all_snps.uniq --make-bed --out targe_gene.all_snps.uniq"
+#.besd subset for all cis snps (male and female)
+qsub2 "~/work_dir/software_install/smr/smr_Linux  --beqtl-summary ../../SampleID-map.male.plus_chrX.linear.esd.list.eqtl --extract-snp targe_gene.all_snps.uniq --extract-probe targe_gene.list --make-besd --out male.targe_gene_and_all_snps.eqtl"
+qsub2 "~/work_dir/software_install/smr/smr_Linux  --beqtl-summary ../../SampleID-map.female.plus_chrX.linear.esd.list.eqtl --extract-snp targe_gene.all_snps.uniq --extract-probe targe_gene.list --make-besd --out female.targe_gene_and_all_snps.eqtl"
+
+#run smr by target snps for each trait
+#female
+for f in $(less trait.list );do cd $f; for h in $(less ../$f.target_snps);do qsub2 "~/work_dir/software_install/smr/smr_Linux --bfile ../targe_gene.all_snps.uniq --gwas-summary $f.female.ma  --beqtl-summary ../female.targe_gene_and_all_snps.eqtl  --out female.targe_snp_gene.$h --peqtl-smr 1 -peqtl-heidi 0.99  --target-snp $h";done; cd ../;done
+#male
+for f in $(less trait.list );do cd $f; for h in $(less ../$f.target_snps);do qsub2 "~/work_dir/software_install/smr/smr_Linux --bfile ../targe_gene.all_snps.uniq --gwas-summary $f.male.ma  --beqtl-summary ../male.targe_gene_and_all_snps.eqtl  --out male.targe_snp_gene.$h --peqtl-smr 1 -peqtl-heidi 0.99  --target-snp $h";done; cd ../;done
+
+#gather all results
+for f in $(less trait.list );do cd $f; ls female.targe_snp_gene.*.smr >All_female_smr.list; cluster/multi_files_cat_with_same_header_by_list.sh All_female_smr.list All_female_smr.list.cat; cd ../;done
+for f in $(less trait.list );do cd $f; ls male.targe_snp_gene.*.smr >All_male_smr.list; cluster/multi_files_cat_with_same_header_by_list.sh All_male_smr.list All_male_smr.list.cat; cd ../;done
+#extract smr results in snp-gene target list
+for f in $(less trait.list );do cd $f; perl local/two_col_key_print_list.pl ../targe_gene.snp_gene All_female_smr.list.cat 5 1 0 1 >All_female_smr.list.cat.in_target; perl local/two_col_key_print_list.pl ../targe_gene.snp_gene  All_male_smr.list.cat 5 1 0 1 >All_male_smr.list.cat.in_target; cd ../;done
+
+#merge all male and female smr info
+awk '{print $1,$3,$5}' Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp >Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.idmap
+qsub2 "Rscript ~/bin/merge_smr_male_female_results_by_gene-trait-snp_list.R Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.idmap >Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.idmap.smr"
+perl local/change_TRUE_to_T.pl Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.idmap.smr >Table_S5.simple.edit.mapped_trait.add_sb_pQTL_snp.idmap.smr.format
+
+#scp to  Emory University/WingoLab - Common - Dry Lab/Project_Sex_Effect_on_Brain_Expression/Results/Causal proteins from shared mechanism paper/:
+#merge and have trait name in  shared mechanism paper
+add_trait_name_from_shared-mech-paper.R
+Table_S5.simple.edit.mapped_trait.male_and_female_fusion.csv
+
+b_GWAS  se_GWAS p_GWAS  b_eQTL  se_eQTL p_eQTL
+
+===== new sex-specific analysis: Analysis Plan questions, replication of sb-eQTLs and sb-pQTLs at FDR<0.1, FDR<0.15, FDR<0.2 =====
+
+4. What is the pi rate for replication of sb-eQTLs and sb-pQTLs at FDR<0.1, FDR<0.15, FDR<0.2? (Yue)
+
+#for sb-pQTL fdr<0.15
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/
+#fdr<0.15
+awk 'NR==1{print}NR>1{if ($15<0.15){print}}' SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_020.addinfo >SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_015.addinfo
+ln -s SampleID-map.xonly_addgene.plus_chrX.list.cat.in_all_sets_fdr_pQTLs.qvalue.fdr_015.addinfo snpXsex.fdr_015
+#clumped list
+perl local/two_col_key_print_list.pl snpXsex.fdr_020.clumped_r2_05.snp_gene snpXsex.fdr_015 2 13 0 1 >snpXsex.fdr_015.clumped_r2_05
+
+#calculate replication rate at each sb-pQTL fdr cutoff
+for f in snpXsex.fdr_0*.clumped_r2_05; do awk 'NR>1{print $2,$13}' $f >$f.snp_gene;done
+for f in snpXsex.fdr_0*.clumped_r2_05; do qsub2 "perl local/two_col_key_print_list.pl $f.snp_gene eQTL.all_interaction 2 13 0 1 >$f.in_eQTL_results ";done
+for f in snpXsex.fdr_0*.clumped_r2_05; do qsub2 "Rscript local/merge_two_plink_assoc_and_test_replication.R $f $f.in_eQTL_results $f.in_eQTL_results.replication >$f.in_eQTL_results.replication.summary";done
+#pi rate is 0 at all fdr cutoff (0.05,0.10,0.15,0.20)
+
+=====  Sex-specific: Sanity check of pQTL and eQTL replication against Siberts =====
+#Sanity check both-sex pQTL and eQTL replication rate against Siberts
+
+1. pQTL
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/protein_GenoxSex/combined_rosmap_banner/Sieberts_eQTL
+ln -s ../SampleID-map.simple_linear.addgene.plus_chrX.list.cat.qvalue.fdr_005 both_sex.pQTL.fdr_005
+awk '{print $2,$13}' both_sex.pQTL.fdr_005 >both_sex.pQTL.fdr_005.snp_gene
+qsub2 "perl local/two_col_key_print_list.pl both_sex.pQTL.fdr_005.snp_gene /home/yliu/work_dir/ProteinPrediction/Outside_data_10012019/SMR_mRNA_Sieberts/eQTL_Sieberts.GCTA.update_A1_by_beta.txt.snp_gene_pval 1 2 1 1 >both_sex.pQTL.fdr_005.snp_gene.in_Siberts "
+qsub2 "Rscript local/replication_pi_rate_simple.R both_sex.pQTL.fdr_005.snp_gene.in_Siberts Pval >both_sex.pQTL.fdr_005.snp_gene.in_Siberts.pi1"
+#pi= 0.7406926
+#in Chloe's AJHG paper, replication of pQTL against Siberts eQTL is 0.75; so it's almost identical result using the new pQTL data.
+
+2. eQTL
+#in /home/yliu/work_dir/ProteinPrediction/sex_specific_proteomics/QC_together.svaProtectSex/RNAseq_GenoxSex/sb_pQTLs/Sieberts_eQTL
+ln -s ../SampleID-map.simple_linear.addgene.plus_chrX.list.cat.fdr.fdr_005 both_sex.pQTL.fdr_005
+qsub2 "perl local/two_col_key_print_list.pl both_sex.pQTL.fdr_005.snp_gene /home/yliu/work_dir/ProteinPrediction/Outside_data_10012019/SMR_mRNA_Sieberts/eQTL_Sieberts.GCTA.update_A1_by_beta.txt.snp_gene_pval 1 2 1 1 >both_sex.pQTL.fdr_005.snp_gene.in_Siberts "
+qsub2 "Rscript local/replication_pi_rate_simple.R both_sex.pQTL.fdr_005.snp_gene.in_Siberts Pval >both_sex.pQTL.fdr_005.snp_gene.in_Siberts.pi1"
+#pi= 0.9638195
+#so fully replicated by Siberts
