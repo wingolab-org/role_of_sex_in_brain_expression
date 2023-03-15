@@ -16,6 +16,7 @@ The analysis shared in the manuscript and code both depend on external software 
 
 - [Bystro b10](https://github.com/akotlar/bystro/blob/b10/INSTALL.md).
 - [COLOC v5.0.0.9002](https://chr1swallace.github.io/coloc/)
+- [DEeq2 version v.1.26.0](https://bioconductor.org/packages/release/bioc/html/DESeq2.html)
 - [EIGENSTRAT 6.1.4](https://github.com/DReichLab/EIG/tree/master/EIGENSTRAT)
 - [FUSION](http://gusevlab.org/projects/fusion)
 - [GO-Elite version 1.2.5](http://www.genmapp.org/go_elite/)
@@ -24,9 +25,8 @@ The analysis shared in the manuscript and code both depend on external software 
 - [Plink version v1.90 beta](https://www.cog-genomics.org/plink/1.9/).
 - [Proteome Discoverer suite v2.4.1](https://www.thermofisher.com/order/catalog/product/OPTON-31099)
 - [qvalue version 2.22.0](https://www.bioconductor.org/packages/release/bioc/html/qvalue.html)
-- [R package DESeq2 v.1.26.0](https://bioconductor.org/packages/release/bioc/html/DESeq2.html)
 - [R version 3.5.1](https://www.r-project.org/)
-- [SEURAT version.3.1.2](https://github.com/satijalab/seurat/)
+- [SEURAT version v3.1.2](https://github.com/satijalab/seurat/)
 - [SMR software](https://cnsgenomics.com/software/smr)
 - [STAR v2.4](https://github.com/alexdobin/STAR)
 - [Surrogate variable analysis v3.20.0](https://www.rdocumentation.org/packages/sva/versions/3.20.0).
